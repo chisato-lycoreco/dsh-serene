@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![DSH](https://img.shields.io/badge/dsh-0.2.1--rc.2-4d6bfe.svg)](https://deepseek-harness.github.io/deepseek-harness/)
 
+中文 | [English](./README.en.md)
+
 > 把「一个会记得你的角色」接进 [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/)。
 > 人格是数据，情绪是状态，记忆是文件——三者都可读、可改、可复现。
 
@@ -17,6 +19,11 @@
 
 它是 [`FRAMEWORK.md`](./FRAMEWORK.md) 里那套七层结构的最小参考实现——**只有织法，没有布**：
 不包含任何私人角色、私人记忆、屏幕采集或图像生成。
+
+![十天，一个人的情绪怎么走：底色、此刻、关系三条线，以及第 3 天留下的那道疤](https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/preview.gif)
+
+上面这张图不是手画的：`node demo/timeline.mjs` 用 [`core/emotion.js`](./core/emotion.js) 的纯函数跑十天，
+`node demo/render.mjs` 把结果画成帧。改一行事件，整条曲线和那道疤都会跟着变——这就是「可复算」的意思。
 
 ---
 
