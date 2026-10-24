@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { apply, name, inject, Config } from "../src/index.js";
@@ -58,13 +58,18 @@ test("入口契约：name / inject / Config / apply 都在", () => {
   assert.equal(typeof apply, "function");
 });
 
-test("挂载后注册 11 个工具，名字都带前缀", (t) => {
+test("挂载后注册 16 个工具，名字都带前缀", (t) => {
   const { ctx, tools } = fakeContext();
   apply(ctx, { dataDir: tempDir(t) });
-  assert.equal(tools.size, 11);
+  assert.equal(tools.size, 16);
   for (const toolName of [
     "serene_style",
     "serene_context",
+    "serene_weather",
+    "serene_belief",
+    "serene_notice",
+    "serene_learn",
+    "serene_introspect",
     "serene_mood",
     "serene_event",
     "serene_remember",
@@ -139,6 +144,66 @@ test("新工具能跑：问主动、记账、强化记忆", async (t) => {
   assert.match(reinforced, /记下了/);
 });
 
+test("新工具：天气 / 看法 / 观察 / 学到的东西", async (t) => {
+  const { ctx, tools } = fakeContext();
+  const dir = tempDir(t);
+  apply(ctx, { dataDir: dir });
+
+  await assert.rejects(() => tools.get("serene_weather").execute({ condition: "下钱", temperature: 1 }, {}), /没记下/);
+  const recorded = await tools.get("serene_weather").execute(
+    { condition: "小雨", temperature: 18, precipitationProbability: 80, isDay: false },
+    {},
+  );
+  assert.match(recorded, /记下了：外面在下小雨，18℃/);
+  assert.match(recorded, /降水概率 80%/);
+  const current = await tools.get("serene_weather").execute({}, {});
+  assert.match(current, /还新鲜的/);
+
+  const belief = await tools.get("serene_belief").execute({ topic: "安静比热闹好", stance: 0.6 }, {});
+  assert.match(belief, /安静比热闹好/);
+  assert.match(await tools.get("serene_belief").execute({}, {}), /你相信：/);
+
+  const notice = await tools.get("serene_notice").execute({ dimension: "rhythm", value: "他睡得晚" }, {});
+  assert.match(notice, /作息/);
+  await assert.rejects(() => tools.get("serene_notice").execute({ dimension: "乱写", value: "x" }, {}), /dimension/);
+
+  const learned = await tools.get("serene_learn").execute(
+    { title: "海边的卡夫卡", takeaway: "潮声是慢的", source: "他借的" },
+    {},
+  );
+  assert.match(learned, /《海边的卡夫卡》——潮声是慢的/);
+  assert.match(learned, /不是他说的/);
+
+  // 进的是记忆，但标成「读到的」，不会混成对方说过的话。
+  const raw = readFileSync(join(dir, "memories.jsonl"), "utf8");
+  const row = raw
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+    .find((item) => item.text?.includes("潮声是慢的"));
+  assert.equal(row.source, "learning");
+  assert.equal(row.kind, "insight");
+
+  const recall = await tools.get("serene_recall").execute({ query: "潮声" }, {});
+  assert.match(recall, /潮声是慢的/);
+
+  const state = JSON.parse(await tools.get("serene_state").execute({}, {}));
+  assert.ok(state.world.season.phase);
+  assert.equal(state.beliefs.learned.length, 1);
+  assert.equal(state.profile.length, 1);
+});
+
+test("depth=short 时不往 prompt 里塞记忆 / 看法 / 观察", async (t) => {
+  const { ctx, tools, sections } = fakeContext();
+  apply(ctx, { dataDir: tempDir(t), depth: "short" });
+  await tools.get("serene_remember").execute({ text: "他怕打雷" }, {});
+  await tools.get("serene_notice").execute({ dimension: "mood", value: "他今天很沉" }, {});
+  const text = sections[0].text({});
+  assert.match(text, /【此刻】/);
+  assert.doesNotMatch(text, /【你记着的】/);
+  assert.doesNotMatch(text, /你注意到/);
+});
+
 test("人格读不到时不拖垮宿主，但留下 serene_status 报原因", async (t) => {
   const { ctx, tools, logs } = fakeContext();
   const originalWrite = process.stderr.write;
@@ -181,6 +246,8 @@ test("常驻 prompt：默认人格只有人格和此刻，没有开场", (t) => 
   const text = section.text({});
   assert.match(text, /你叫小满/);
   assert.match(text, /【此刻】现在是/);
+  assert.match(text, /【外面】/);
+  assert.match(text, /日子：\d{4} 年/);
   assert.doesNotMatch(text, /【第一次见面】/, "没有 opening.md 的人格不该被塞开场白");
 });
 

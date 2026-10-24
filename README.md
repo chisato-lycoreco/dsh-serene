@@ -119,9 +119,13 @@ export DEEPSEEK_API_KEY=sk-...      # 或者先在 GUI 的 Models 页填一次
 | 时间 | 发生什么 |
 | --- | --- |
 | 0:00 | 她有一块表：真实时间、星期几、此刻在做什么，由 `routine` 算出来，不是写死的台词 |
+| 0:00 | 她也知道「今年什么时候」：年月日、季节、季相（仲秋 / 十月下旬），由时间戳算出来 |
 | 0:30 | 心情会变：一句冲的话让她当场沉下去，过一阵自己回来；底色和此刻可以不一致 |
 | 1:30 | 她记得住：第二天说得出「你最近睡得不好」；想不起来时也会说想不起来 |
 | 隔一天 | 她知道收住：主动开口有每日预算，不说的时候有替代动作 |
+
+天气不联网也能有：插件自己不查天气，你在对话里查到之后用 `serene_weather` 记一笔，
+三小时内她会顺着它说话；没有就当没有，不替窗外下雨。
 
 开场只出现一次。状态在 `dataDir/personas/zhiyao/opening.json`：想再看一次，删掉它，
 或把 `phase` 改回 `pending`。
@@ -146,6 +150,9 @@ export DEEPSEEK_API_KEY=sk-...      # 或者先在 GUI 的 Models 页填一次
 | `memoryCapacity` | `500` | 长期记忆容量，满了按 重要度 × 保持率 淘汰（过期的先走） |
 | `proactivePerDay` | `3` | 她每天最多主动开口几次，`0` = 不主动 |
 | `proactiveGapMinutes` | `60` | 两次主动之间至少隔多久 |
+| `depth` | `normal` | 每轮给多少背景：`short` = 人格 + 此刻 + 外面；`normal` 再加记忆 / 看法 / 观察；`deep` 再加夜里的自省 |
+| `world` | `true` | 把年月日、季节写进【外面】；关掉就只剩钟点 |
+| `introspection` | `true` | 允许夜里自省一次；只在 `depth=deep` 时进 prompt，也可用 `serene_introspect` 手动读 |
 
 覆盖示例（`~/.dsh/profiles/web/cordis.patch.yml`）：
 
@@ -167,13 +174,18 @@ export DEEPSEEK_API_KEY=sk-...      # 或者先在 GUI 的 Models 页填一次
 | 工具 | 作用 |
 | --- | --- |
 | `serene_style` | 发出去之前自检：列点、自称助手、解释设定、通用甜话、太长、一口气问太多 |
-| `serene_context` | 人格卡 +【此刻】在做什么 + 心情。常驻 prompt 关掉时，新会话开头调一次 |
+| `serene_context` | 人格卡 +【此刻】在做什么 +【外面】+ 心情 + 她相信的 / 注意到的。常驻 prompt 关掉时，新会话开头调一次 |
+| `serene_weather` | 记下你查到的、他窗外的天气（插件不联网）；不传参数就返回三小时内还新鲜的读数 |
+| `serene_belief` | 读 / 改她自己的看法：不传 `topic` 就返回她相信的；一次事件只挪一点 |
+| `serene_notice` | 记下你注意到他的一件事（作息 / 口味 / 在意的事 / 说话习惯 / 情绪底色 / 对天气的反应） |
+| `serene_learn` | 记下你读到的书、文章、事情；进记忆，但标成「读到的」，不会当成他说的 |
+| `serene_introspect` | 夜里（23:00–02:00）回顾一次；一晚只出现一次，白天调用不会自省 |
 | `serene_mood` | 只读此刻状态（自然语言，不含数值） |
 | `serene_event` | 记一件事进情感层（31 种事件，见下） |
 | `serene_remember` | 写一条长期记忆（六类之一，≤ 80 字） |
 | `serene_recall` | 按话题召回记忆，带时间、类型、激活度和 id；**可以一条都不返回** |
 | `serene_reinforce` | 这几条真的用进回复了才调：被想起会让它以后更容易被想起 |
-| `serene_state` | 调试用：三层数值、余震、最近事件、疤、今天的主动额度、此刻的作息与精神 |
+| `serene_state` | 调试用：三层数值、余震、最近事件、疤、今天的主动额度、此刻的作息与精神、外面、看法、观察 |
 | `serene_proactive` | 问「现在该不该主动开口」：理由、今日额度、不说时的替代动作 |
 | `serene_proactive_done` | 开口之后记一次；被拒了传 `rejected`，扣额度并冷却 |
 | `serene_status` | 诊断：插件是否真的挂上；加载失败时返回原因和修法 |
@@ -187,6 +199,35 @@ cold_read / warm_read / moved / disclose / suppress`。
 关系性的词是她自己的，不该由插件替她预设。
 
 模型什么时候调用这些工具，由你在 `AGENTS.md` 或人格卡里约定；插件不劫持对话。
+
+---
+
+## 外面、看法、自省、读到的
+
+这四层不是新的人格，是给「开局」补的背景。它们默认都很轻：没有数据时，prompt 里一个字都不出现。
+
+**外面（`core/almanac.js` + `core/weather.js`）**
+按北京时间算年月日、星期、季节和季相；南半球把人设里的 `hemisphere` 写成 `south`。
+天气不联网——`serene_weather` 只是把宿主查到的读数记下来（WMO 天气码或中文名 + 气温），
+三小时后自动过期。没有天气就只写日子，不猜。
+
+**看法（`core/beliefs.js`）**
+「安静比热闹好」这类看法和她记的事分开存。人格可以给种子（`persona.beliefs`），
+之后每发生一次相关的事，`serene_belief` 只把立场挪 30%，不会一句话翻面；
+底气（confidence）随听到的次数涨，写进 prompt 时只挑有底气的三条。
+
+**用户模型（`core/profile.js`）**
+六个维度（作息 / 口味 / 在意的事 / 说话习惯 / 情绪底色 / 对天气的反应），种子为空。
+`serene_notice` 记一次「他睡得晚」，同一件事再看到一次会更确定；一个维度最多留三条。
+没有观察时整句不出现。
+
+**自省（`core/introspect.js`）**
+只在 23:00–02:00 触发，一晚一次，只收拢已有的东西：今天记下了什么、底色如何、
+还相信什么、还在想什么。不调模型、不编日记；`depth=deep` 时才进 prompt。
+
+**读到的（`serene_learn`）**
+书、文章、一件事进的是记忆，但 `source` 标成 `learning`；prompt 和召回里都会写成
+「（读到的）」，不会和对方亲口说的话混在一起。
 
 ---
 
@@ -226,7 +267,14 @@ cold_read / warm_read / moved / disclose / suppress`。
 
 `motivation.json`：今天的主动额度、上一次开口的时间、还没退掉的 hold。
 
-三个文件都是你的：可以备份、可以手改、可以删。删掉就是从没发生过。
+`beliefs.json` / `profile.json`：她后来学到的看法、她注意到的他。都是小 JSON，删了就回到
+人格种子 / 一张白纸。
+
+`weather.json`：最近一次报进来的天气，三小时后自动当没有。
+
+`introspect.json`：哪一晚已经自省过、那晚收拢出的一小段。
+
+这些文件都是你的：可以备份、可以手改、可以删。删掉就是从没发生过。
 
 ---
 
@@ -321,7 +369,7 @@ personas/zhiyao/
 
 ```bash
 npm install          # 只装 devDependencies（schemastery / dsh-tools）
-npm test             # node --test，86 个用例
+npm test             # node --test，116 个用例
 ```
 
 ```
@@ -332,13 +380,23 @@ core/lexicon.js           纯函数：事件词表；人格只追加，不改默
 core/life.js              纯函数：她的一天（作息、精力、时间怎么说）
 core/mental.js            纯函数：精神（精力 / 专注 / 紧），由作息和情绪现算
 core/style.js             纯函数：表达自检（列点 / 客服腔 / 太长 / 问太多）
+core/almanac.js           纯函数：年、季、月、日、季相、天气怎么说
+core/weather.js           纯函数：天气码、读数归一化、新鲜度、湿冷热
+core/beliefs.js           纯函数：她自己的看法（会被一次事件推动，不会翻面）
+core/profile.js           纯函数：她注意到的他（六个维度，种子为空）
+core/introspect.js        纯函数：夜里的自省（只收拢已有的东西）
 src/stores/emotion-store.js     唯一碰磁盘的地方（原子写）
 src/stores/memory-store.js      jsonl 追加、容量、召回
 src/stores/motivation-store.js  今天的额度与 hold
+src/stores/doc-store.js         小 JSON 的原子读写
+src/stores/belief-store.js      看法落盘
+src/stores/profile-store.js     观察落盘
+src/stores/weather-store.js     天气读数与过期
+src/stores/introspect-store.js  一晚一次的自省
 src/persona.js            人格档案（单文件 / 目录）→ prompt 段
-src/prompt.js             常驻 prompt 段：人格 +【此刻】+ 首启 + 记着的
+src/prompt.js             常驻 prompt 段：人格 +【此刻】+【外面】+ 首启 + 记着的
 src/opening.js            首启只说一次：pending → opened
-src/tools.js              11 个工具（含 serene_status 诊断）
+src/tools.js              16 个工具（含 serene_status 诊断）
 src/index.js              name / inject / Config / apply
 ```
 

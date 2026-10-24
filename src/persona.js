@@ -23,11 +23,14 @@
  *                        见 core/lexicon.js：默认只认中立说法，关系性的词要她自带
  *   routine     object   { weekday: Slot[], weekend: Slot[] } 她的一天，见 core/life.js；
  *                        不给就用普通人的作息
+ *   hemisphere  string   "north"（默认）或 "south"：季节按哪边算
+ *   beliefs     object[] 她本来就有的看法 [{topic, stance, confidence}]
  *   baseline    object   三层初始状态，缺省用 core 的 BASELINE
  */
 
 import { readFileSync, statSync } from "node:fs";
 import { basename, isAbsolute, join } from "node:path";
+import { normalizeBeliefs } from "../core/beliefs.js";
 import { BASELINE, normalizeLayer } from "../core/emotion.js";
 import { normalizeRoutine } from "../core/life.js";
 import { LEXICON_GROUPS } from "../core/lexicon.js";
@@ -84,6 +87,8 @@ export function definePersona(raw, { path = "", dir = null } = {}) {
     boundaries: list(raw?.boundaries),
     sections,
     routine: normalizeRoutine(raw?.routine),
+    hemisphere: raw?.hemisphere === "south" ? "south" : "north",
+    beliefs: normalizeBeliefs(raw?.beliefs),
     lexicon,
     baseline: {
       background: normalizeLayer(raw?.baseline?.background, BASELINE.background),

@@ -7,12 +7,17 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { almanacAt, almanacBlock, weatherLine } from "../core/almanac.js";
+import { beliefsLine, mergeBeliefs } from "../core/beliefs.js";
 import { EVENT_EFFECTS } from "../core/emotion.js";
+import { inNightWindow, reflect } from "../core/introspect.js";
 import { lifeAt, lifeBlock } from "../core/life.js";
 import { mentalAt, mentalLine } from "../core/mental.js";
+import { DIMENSIONS, DIMENSION_KEYS, profileLine } from "../core/profile.js";
 import { MEMORY_KINDS, MAX_TEXT_CHARS } from "../core/recall.js";
 import { PROACTIVE, describeDecision } from "../core/motivation.js";
 import { checkStyle } from "../core/style.js";
+import { CONDITIONS } from "../core/weather.js";
 import { buildPersonaBlock } from "./persona.js";
 
 /**
@@ -33,7 +38,22 @@ try {
 const asText = (value) => [{ type: "text", text: String(value ?? "") }];
 const stringOutput = { schema: { type: "string" }, render: (_args, value) => asText(value) };
 
-export function registerTools(ctx, { emotion, memory, motivation, opening = null, persona, config, dataDir = "" }) {
+export function registerTools(
+  ctx,
+  {
+    emotion,
+    memory,
+    motivation,
+    opening = null,
+    persona,
+    config,
+    dataDir = "",
+    beliefs = null,
+    profile = null,
+    weather = null,
+    introspect = null,
+  },
+) {
   if (typeof defineTool !== "function") {
     throw new Error(
       "无法加载 @deepseek-ai/dsh-tools（工具注册依赖 DSH 宿主提供该包）。" +
@@ -65,15 +85,191 @@ export function registerTools(ctx, { emotion, memory, motivation, opening = null
     defineTool({
       name: "serene_context",
       description:
-        "开始一段对话前先调用：返回她的人格卡、【此刻】在做什么，以及当下的情感状态（自然语言，不含数值）。每次新会话只调一次就够。",
+        "开始一段对话前先调用：返回她的人格卡、【此刻】在做什么、【外面】是哪一天什么季节，以及当下的情感状态、她相信的、她注意到的（自然语言，不含数值）。每次新会话只调一次就够。",
       parameters: {},
       output: stringOutput,
       async execute() {
         const now = Date.now();
         const life = lifeAt(now, { seed: persona.id, routine: persona.routine });
         const snapshot = emotion.snapshot({ now, asleep: life.asleep });
-        const moment = `【此刻】${lifeBlock(life)}\n${mentalLine(mentalAt(life, snapshot.layers))}`;
-        return `${buildPersonaBlock(persona)}\n\n${moment}\n\n${snapshot.text}`;
+        const parts = [
+          buildPersonaBlock(persona),
+          `【此刻】${lifeBlock(life)}\n${mentalLine(mentalAt(life, snapshot.layers))}`,
+        ];
+        if (config.world !== false) {
+          const almanac = almanacAt(now, { hemisphere: persona.hemisphere });
+          parts.push(almanacBlock(almanac, { weather: weather?.current(now) ?? null }));
+        }
+        if (config.depth !== "short") {
+          const believed = beliefsLine(mergeBeliefs(persona.beliefs, beliefs?.beliefs));
+          if (believed) parts.push(believed);
+          const noticed = profileLine(profile?.observations);
+          if (noticed) parts.push(noticed);
+        }
+        parts.push(snapshot.text);
+        return parts.join("\n\n");
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "serene_weather",
+      description:
+        "记下你查到的、他窗外的天气（插件自己不联网，天气要你先查）。不传参数就返回还新鲜的读数；超过 3 小时当没有。天气只是背景：不播报，他问起再说。",
+      parameters: {
+        condition: {
+          type: "string",
+          description: `天气名，比如晴、多云、阴、小雨、雪、雷阵雨。可报的：${CONDITIONS.join("、")}`,
+        },
+        temperature: { type: "number", description: "气温（℃）。" },
+        apparent: { type: "number", description: "体感（℃）。" },
+        high: { type: "number", description: "今天最高温（℃）。" },
+        low: { type: "number", description: "今天最低温（℃）。" },
+        precipitationProbability: { type: "number", description: "降水概率 0–100。" },
+        wind: { type: "number", description: "风速（km/h）。" },
+        isDay: { type: "boolean", description: "他那边天还亮着吗。" },
+        city: { type: "string", description: "城市名，只留在记录里，不进 prompt。" },
+      },
+      output: stringOutput,
+      async execute(args) {
+        const now = Date.now();
+        if (!weather) return "这一版没有天气可写。";
+        const condition = String(args.condition ?? "").trim();
+        const hasTemperature =
+          args.temperature !== null &&
+          args.temperature !== undefined &&
+          String(args.temperature).trim() !== "" &&
+          Number.isFinite(Number(args.temperature));
+        if (!condition && !hasTemperature) {
+          const current = weather.current(now);
+          return current ? `还新鲜的：${weatherLine(current)}` : "还没有外面的天气。查到了再告诉我天气名和气温。";
+        }
+        const record = weather.record({ ...args }, now);
+        if (!record) throw new Error(`没记下：天气名要能认出来（${CONDITIONS.join("、")}），并且要有气温。`);
+        return `记下了：${weatherLine(record)}（3 小时内算数）`;
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "serene_belief",
+      description:
+        "读或改她自己的看法：不传 topic 就返回她现在相信的；传了就记下这件事让她怎么想。一次事件只会挪一点，不会被一句话翻面。",
+      parameters: {
+        topic: { type: "string", description: "看法本身，一句话，比如「安静比热闹好」。" },
+        stance: { type: "number", description: "这件事支持的方向：-1 反对 … 1 支持；不传就只是又听到一次。" },
+        weight: { type: "number", description: "这件事的分量，默认 1（0.5 = 半信半疑，2 = 很重）。" },
+      },
+      output: stringOutput,
+      async execute(args) {
+        const topic = String(args.topic ?? "").trim();
+        if (!beliefs) return "这一版没开看法层。";
+        if (!topic) {
+          const line = beliefsLine(mergeBeliefs(persona.beliefs, beliefs.beliefs));
+          return line || "她还没有什么说得上的看法。";
+        }
+        const result = beliefs.record({ topic, stance: args.stance, weight: args.weight, now: Date.now() });
+        if (!result.belief) throw new Error("没记下：看法要是一句非空的话。");
+        const direction =
+          result.belief.stance > 0.2 ? "更信" : result.belief.stance < -0.2 ? "更不信" : "还拿不准";
+        return `记下了。她现在${direction}「${result.belief.topic}」（底气 ${Math.round(result.belief.confidence * 100)}%）。`;
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "serene_notice",
+      description:
+        "记下你注意到他的一件事（作息 / 口味 / 在意的事 / 说话习惯 / 情绪底色 / 对天气的反应）。只记你真看见的，不猜；同一件事再看到一次会更确定。",
+      parameters: {
+        dimension: {
+          type: "string",
+          description: DIMENSION_KEYS.map((key) => `${key} = ${DIMENSIONS[key]}`).join("；"),
+        },
+        value: { type: "string", description: "一句话，站在你的角度：他睡得晚 / 他不太喜欢吵闹。" },
+        weight: { type: "number", description: "这次的分量，默认 1。" },
+      },
+      output: stringOutput,
+      async execute(args) {
+        if (!profile) return "这一版没开用户模型。";
+        const result = profile.observe({
+          dimension: args.dimension,
+          value: args.value,
+          weight: args.weight,
+          now: Date.now(),
+        });
+        if (!result.observation) {
+          if (result.reason === "crowded") {
+            const label = DIMENSIONS[String(args.dimension ?? "").trim()] ?? "这一方面";
+            return `没记下：${label}已经有三条更确定的观察了。先记更明显的，或者等这条更清楚一点。`;
+          }
+          const keys = DIMENSION_KEYS.map((key) => `${key}（${DIMENSIONS[key]}）`).join("、");
+          throw new Error(`没记下：dimension 要在这几个里：${keys}；value 不能空。`);
+        }
+        return `记下了（${DIMENSIONS[result.observation.dimension]}）：${result.observation.value}`;
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "serene_learn",
+      description:
+        "记下你读到、听到、学到的东西（书、文章、一件事）。它进的是你的记忆，但标成「你读到的」，不会当成他亲口说过的话。",
+      parameters: {
+        title: { type: "string", required: true, description: "书名 / 文章名 / 事情，比如《海边的卡夫卡》。" },
+        takeaway: { type: "string", required: true, description: "你从中记住的一句话，别抄简介。" },
+        kind: { type: "string", description: "book（默认）/ article / thing。" },
+        source: { type: "string", description: "从哪来的：他借的 / 自己翻到的 / 听他说的。" },
+      },
+      output: stringOutput,
+      async execute(args) {
+        const kind = ["book", "article", "thing"].includes(String(args.kind ?? "").trim())
+          ? String(args.kind).trim()
+          : "book";
+        const title = String(args.title ?? "").trim();
+        const takeaway = String(args.takeaway ?? "").trim();
+        if (!title || !takeaway) throw new Error("没记下：title 和 takeaway 都要有。");
+        const text = kind === "book" ? `《${title}》——${takeaway}` : `${title}——${takeaway}`;
+        if (Array.from(text).length > MAX_TEXT_CHARS) {
+          throw new Error(`记不下：太长（${Array.from(text).length} 字 > ${MAX_TEXT_CHARS} 字）。`);
+        }
+        const row = memory.add(
+          { text, kind: "insight", source: "learning", tags: [kind, "读到的"], importance: 0.5 },
+          { now: Date.now() },
+        );
+        if (!row) throw new Error("没记下：这条记忆是空的。");
+        const from = String(args.source ?? "").trim();
+        return `记下了${from ? `（${from}）` : ""}：${text}\n这是你读到的，不是他说的。`;
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "serene_introspect",
+      description:
+        "夜里（23:00–02:00）让她回顾一次：今天记下了什么、底色如何、还在想什么。一晚只出现一次；白天调用不会自省。",
+      parameters: {},
+      output: stringOutput,
+      async execute() {
+        const now = Date.now();
+        if (!introspect) return "这一版没开自省。";
+        if (config.introspection === false) return "自省被关掉了（config.introspection=false）。";
+        if (!inNightWindow(now)) return "现在不是夜里，先不自省。";
+        const text = reflect({
+          snapshot: emotion.snapshot({ now }),
+          memories: memory.all(),
+          beliefs: mergeBeliefs(persona.beliefs, beliefs?.beliefs),
+          profile: profile?.observations,
+          now,
+        }).text;
+        if (!text) return "夜里没有什么可收拢的。";
+        introspect.mark(text, now);
+        return text;
       },
     }),
   );
@@ -254,6 +450,16 @@ export function registerTools(ctx, { emotion, memory, motivation, opening = null
               asleep: life.asleep,
             },
             mental: mentalAt(life, snapshot.layers),
+            world:
+              config.world === false
+                ? null
+                : {
+                    ...almanacAt(now, { hemisphere: persona.hemisphere }),
+                    weather: weather?.current(now) ?? null,
+                  },
+            beliefs: { seeds: persona.beliefs, learned: beliefs?.beliefs ?? [] },
+            profile: profile?.observations ?? [],
+            introspection: introspect?.last ?? null,
             opening: opening?.snapshot?.() ?? null,
             residue: snapshot.residue,
             wounds: snapshot.wounds,
@@ -317,7 +523,17 @@ export function registerTools(ctx, { emotion, memory, motivation, opening = null
   );
 
   // 最后一条：无论前面注册了几个，它都在（人格失败时这是唯一的一个）。
-  registerStatusTool(ctx, { persona, memory, motivation, opening, dataDir: dataDir || config.dataDir });
+  registerStatusTool(ctx, {
+    persona,
+    memory,
+    motivation,
+    opening,
+    beliefs,
+    profile,
+    weather,
+    introspect,
+    dataDir: dataDir || config.dataDir,
+  });
 }
 
 /**
@@ -329,7 +545,18 @@ export function registerTools(ctx, { emotion, memory, motivation, opening = null
  */
 export function registerStatusTool(
   ctx,
-  { persona = null, memory = null, motivation = null, opening = null, dataDir = "", error = null } = {},
+  {
+    persona = null,
+    memory = null,
+    motivation = null,
+    opening = null,
+    beliefs = null,
+    profile = null,
+    weather = null,
+    introspect = null,
+    dataDir = "",
+    error = null,
+  } = {},
 ) {
   if (typeof defineTool !== "function") {
     throw new Error(
@@ -369,6 +596,16 @@ export function registerStatusTool(
           `- 情感状态：${existsSync(stateFile) ? `${stateFile}（已生成）` : "尚未生成，第一次记事件时创建"}`,
         ];
         if (life) lines.push(`- 此刻：${lifeBlock(life, { compact: true })}`);
+        if (persona) {
+          try {
+            const almanac = almanacAt(now, { hemisphere: persona.hemisphere });
+            const current = weather?.current(now) ?? null;
+            const outside = current ? `；${weatherLine(current)}` : "；天气还没报（可用 serene_weather 记一笔）";
+            lines.push(`- 外面：${almanac.dateText}${outside}`);
+          } catch {
+            // 世界层坏了不影响诊断工具本身。
+          }
+        }
         if (opening) lines.push(`- 第一次见面：${opening.pending() ? "还没开场（下一次对话会说第一句）" : "已经开过场"}`);
         if (memory) {
           const stats = memory.stats();
@@ -381,6 +618,13 @@ export function registerStatusTool(
         if (motivation) {
           const state = motivation.snapshot();
           lines.push(`- 主动：今天 ${state.today.count}/${state.policy.perDay} 次，还剩 ${state.remaining} 次`);
+        }
+        if (beliefs || persona?.beliefs?.length) {
+          lines.push(`- 看法：人格种子 ${persona?.beliefs?.length ?? 0} 条，学到的 ${beliefs?.beliefs?.length ?? 0} 条`);
+        }
+        if (profile) lines.push(`- 注意到他：${profile.observations.length} 条`);
+        if (introspect) {
+          lines.push(`- 夜里：${introspect.last.lastKey ? `上次自省 ${introspect.last.lastKey}` : "还没自省过"}`);
         }
         return lines.join("\n");
       },

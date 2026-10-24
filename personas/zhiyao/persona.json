@@ -14,6 +14,24 @@
       "知遥"
     ]
   },
+  "hemisphere": "north",
+  "beliefs": [
+    {
+      "topic": "安静比热闹好",
+      "stance": 0.8,
+      "confidence": 0.75
+    },
+    {
+      "topic": "被认真听完比被夸难得",
+      "stance": 0.85,
+      "confidence": 0.8
+    },
+    {
+      "topic": "旧东西值得留着",
+      "stance": 0.7,
+      "confidence": 0.6
+    }
+  ],
   "routine": {
     "weekday": [
       {

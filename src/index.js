@@ -16,9 +16,14 @@ import { registerTools, registerStatusTool } from "./tools.js";
 import { buildSereneSection } from "./prompt.js";
 import { OpeningStore } from "./opening.js";
 import { EmotionStore } from "./stores/emotion-store.js";
+import { BeliefStore } from "./stores/belief-store.js";
+import { ProfileStore } from "./stores/profile-store.js";
+import { WeatherStore } from "./stores/weather-store.js";
+import { IntrospectStore } from "./stores/introspect-store.js";
 import { MemoryStore } from "./stores/memory-store.js";
 import { MotivationStore } from "./stores/motivation-store.js";
 import { PROACTIVE } from "../core/motivation.js";
+import { reflect } from "../core/introspect.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(here, "..");
@@ -41,6 +46,9 @@ export const Config = Schema.object({
   memoryCapacity: Schema.number().min(10).max(5000).step(10).default(500).description("长期记忆容量，满了按 重要度×保持率 淘汰"),
   proactivePerDay: Schema.number().min(0).max(12).step(1).default(3).description("她每天最多主动开口几次，0 = 不主动"),
   proactiveGapMinutes: Schema.number().min(10).max(360).step(5).default(60).description("两次主动之间至少隔多久（分钟）"),
+  depth: Schema.string().default("normal").description("每轮给多少背景：short = 人格+此刻+外面；normal 再加记忆/看法/观察；deep 再加夜里的自省"),
+  world: Schema.boolean().default(true).description("把年月日、季节（以及报进来的天气）写进【外面】"),
+  introspection: Schema.boolean().default(true).description("允许夜里自省一次（只在 depth=deep 时进 prompt，也可用 serene_introspect 手动读）"),
 });
 
 export function apply(ctx, config = {}) {
@@ -78,8 +86,45 @@ export function apply(ctx, config = {}) {
   // 只有带开场文本的人格才有「第一次见面」；demo 这类示例不该被塞一句开场白。
   const opening = options.opening && persona.sections?.opening ? new OpeningStore({ dir: dataDir, personaId: persona.id }) : null;
 
+  const beliefs = new BeliefStore({ dir: dataDir });
+  const profile = new ProfileStore({ dir: dataDir });
+  const weather = new WeatherStore({ dir: dataDir });
+  const introspect = new IntrospectStore({ dir: dataDir });
+
+  // 夜里的自省：只有真的进了 prompt 才在收尾时记下这一晚，没显示就不算做过。
+  let shownReflection = "";
+  function reflectionFor(now = Date.now()) {
+    if (!options.introspection || options.depth !== "deep" || !introspect.due(now)) return "";
+    try {
+      const text = reflect({
+        snapshot: emotion.snapshot({ now }),
+        memories: memory.all(),
+        beliefs: [...persona.beliefs, ...beliefs.beliefs],
+        profile: profile.observations,
+        now,
+      }).text;
+      if (text) shownReflection = text;
+      return text;
+    } catch (error) {
+      ctx.logger?.warn?.(`[dsh-serene] 夜里自省没写成：${error.message}`);
+      return "";
+    }
+  }
+
   try {
-    registerTools(ctx, { emotion, memory, motivation, opening, persona, config: options, dataDir });
+    registerTools(ctx, {
+      emotion,
+      memory,
+      motivation,
+      opening,
+      persona,
+      config: options,
+      dataDir,
+      beliefs,
+      profile,
+      weather,
+      introspect,
+    });
   } catch (error) {
     const reason = `工具注册失败：${error.message}`;
     ctx.logger?.error?.(`[dsh-serene] ${reason}（本次未启用；可调 serene_status 查看）`);
@@ -100,24 +145,40 @@ export function apply(ctx, config = {}) {
         // 0 是 deployment persona 的位置；1 表示「紧跟其后，先于计划与策略」。
         order: 1,
         interpolate: false,
-        text: () =>
-          buildSereneSection({
+        text: () => {
+          const now = Date.now();
+          return buildSereneSection({
             persona,
             emotion,
             memory,
             opening,
-            now: Date.now(),
-          }),
+            beliefs: beliefs.beliefs,
+            profile: profile.observations,
+            weather: options.world ? weather.current(now) : null,
+            reflection: reflectionFor(now),
+            depth: options.depth,
+            world: options.world,
+            now,
+          });
+        },
       }),
     );
   }
 
   // 第一轮结束时把「见过」落盘。挂在 turn 的收尾而不是 prompt 装配，
   // 是为了让同一轮里的多次工具调用都还能看到开场约束。
-  if (opening) {
+  if (opening || (options.introspection && options.depth === "deep")) {
     try {
       ctx.on("agent/turn-stopping", () => {
-        if (opening.pending()) opening.markOpened();
+        try {
+          if (opening?.pending()) opening.markOpened();
+          if (shownReflection) {
+            introspect.mark(shownReflection, Date.now());
+            shownReflection = "";
+          }
+        } catch (error) {
+          ctx.logger?.warn?.(`[dsh-serene] 收尾时记状态失败：${error.message}`);
+        }
       });
     } catch (error) {
       ctx.logger?.warn?.(`[dsh-serene] 无法监听 turn 结束（开场会保持到下一次成功收尾）：${error.message}`);
@@ -176,7 +237,15 @@ function normalizeConfig(config = {}) {
     memoryCapacity: clampNumber(raw.memoryCapacity, 10, 5000, 500),
     proactivePerDay: clampNumber(raw.proactivePerDay, 0, 12, 3),
     proactiveGapMinutes: clampNumber(raw.proactiveGapMinutes, 10, 360, 60),
+    depth: normalizeDepth(raw.depth),
+    world: raw.world !== false,
+    introspection: raw.introspection !== false,
   };
+}
+
+function normalizeDepth(value) {
+  const text = String(value ?? "").trim();
+  return text === "short" || text === "deep" ? text : "normal";
 }
 
 function clampNumber(value, min, max, fallback) {

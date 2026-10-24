@@ -1,5 +1,62 @@
 # Changelog
 
+## 0.4.0 — 2026-10-24
+
+开局补了三层背景：她知道自己活在什么日子里，她有自己的看法，她会注意到对方。
+外加两条收尾：夜里的自省，和「读到的」记忆。
+
+**外面（`core/almanac.js` + `core/weather.js`）**
+
+- 按北京时间算年、月、日、星期、季节、季相（初春 / 仲春 / 暮春 … 残冬）和旬（上 / 中 / 下旬）；
+  南半球用 `hemisphere: "south"` 或纬度判断。
+- 天气**不联网**：`serene_weather` 只把你查到的读数记下来（WMO 码或中文天气名 + 气温），
+  三小时内算数，过期当没有。没有天气就只写日子，不猜。
+- 【外面】写进常驻 prompt 与 `serene_context`，并且明确一句「这些是真的，不是设定」。
+  `world: false` 可以只留钟点。
+
+**看法层（`core/beliefs.js`）**
+
+- 人格可以给种子（`persona.beliefs`）；`serene_belief` 读或改。
+- 一次事件只把立场挪 30%，不会被一句话翻面；底气（confidence）随重复听到上涨，
+  0.95 封顶。写进 prompt 时只挑有底气的三条。
+- 学到的看法与种子合并，同一个话题以学到的为准。
+
+**用户模型（`core/profile.js`）**
+
+- 六个维度：作息 / 口味 / 在意的事 / 说话习惯 / 情绪底色 / 对天气的反应；种子为空。
+- `serene_notice` 记一次观察；同一件事再看到会加次数和底气；一个维度最多留三条。
+- 没有观察时，prompt 里不会出现「你注意到」。
+
+**自省（`core/introspect.js`）**
+
+- 只在 23:00–02:00（北京时间）触发，一晚一次；凌晨 0–2 点算前一晚。
+- 只收拢已经存在的：今天记下了什么、底色、还相信什么、还在想什么；没有素材就不写。
+- 两种用法：`depth: "deep"` 时自动进 prompt；或对话里调 `serene_introspect`。
+  `introspection: false` 关掉。
+
+**读到的（`serene_learn`）**
+
+- 书、文章、事情写进现有记忆，`kind: "insight"`、`source: "learning"`。
+- prompt 和召回里标成「（读到的）」，不会和对方亲口说的话混在一起。
+
+**深度与工具**
+
+- `depth: short | normal | deep`：只决定**给多少背景**，不改变模型怎么想——
+  `short` = 人格 + 此刻 + 外面；`normal` 加记忆 / 看法 / 观察；`deep` 再加夜里的自省。
+- 工具 11 → 16：新增 `serene_weather`、`serene_belief`、`serene_notice`、`serene_learn`、
+  `serene_introspect`；`serene_context` / `serene_state` / `serene_status` 带上外面、
+  看法、观察、自省。
+- 知遥补了季节与天气的感知写法：她没有皮肤，靠进风口、雨棚、线槽知道冷暖和雨；
+  只说「外面在下雨」，不说「我觉得冷」。
+
+**新增文件**
+
+- `core/almanac.js`、`core/weather.js`、`core/beliefs.js`、`core/profile.js`、`core/introspect.js`；
+- `src/stores/doc-store.js`（通用小 JSON）、`belief-store.js`、`profile-store.js`、
+  `weather-store.js`、`introspect-store.js`；
+- 测试 86 → 116：季相与南半球、天气阈值与过期、看法只挪不翻、观察去重与上限、
+  夜间窗口与自省素材、读到的记忆标记、深度分层。
+
 ## 0.3.0 — 2026-10-24
 
 从「只有织法」到「可以开局」：仓库里多了一份人格包，插件多了一个常驻 prompt 段。

@@ -103,14 +103,17 @@ Set `persona` to `zhiyao`, then say your first word to her:
 
 She does not say "hello" and does not introduce herself. She says one thing that is happening right now — a fan in the server room, a tape she just finished cleaning, a sound she just gave a name — and then stops.
 
-**The opening is not a welcome line; it is four things you can check:**
+**The opening is not a welcome line; it is five things you can check:**
 
 | When | What happens |
 | --- | --- |
 | 0:00 | She has a clock: real time, weekday, what she is doing — computed from `routine`, not a fixed script |
+| 0:00 | She also knows *when* in the year it is: date, season and its phase (mid-autumn, late October), derived from the timestamp |
 | 0:30 | Mood moves: one sharp sentence drops her current layer; it recovers on its own. Background and current mood may disagree |
 | 1:30 | She remembers: the next day she can say "you haven't been sleeping well" — and she can say "I don't remember" |
 | A day later | She holds back: proactive openers have a daily budget, and there is always a substitute action |
+
+Weather works without a network too: the plugin never fetches it. Once you look it up in the conversation, record it with `serene_weather`; she speaks from it for three hours. With no report she does not invent rain outside.
 
 The opening appears once. Its state lives in `dataDir/personas/zhiyao/opening.json` — delete that file (or set `phase` back to `pending`) to replay it.
 
@@ -134,6 +137,9 @@ No install needed to see it: `npm run opening` runs a deterministic 72-hour scri
 | `memoryCapacity` | `500` | Memory cap; eviction prefers expired entries, then lowest importance × retention |
 | `proactivePerDay` | `3` | How many times she may reach out per day; `0` disables it |
 | `proactiveGapMinutes` | `60` | Minimum gap between two proactive openers |
+| `depth` | `normal` | How much background per turn: `short` = persona + right now + outside; `normal` adds memories / beliefs / observations; `deep` adds the nightly reflection |
+| `world` | `true` | Put date, season and weather into the “outside” block; turn it off to keep only the clock |
+| `introspection` | `true` | Allow one reflection per night; it enters the prompt only at `depth=deep`, and `serene_introspect` can also read it on demand |
 
 Override example (`~/.dsh/profiles/web/cordis.patch.yml`):
 
@@ -155,13 +161,18 @@ Override example (`~/.dsh/profiles/web/cordis.patch.yml`):
 | Tool | Purpose |
 | --- | --- |
 | `serene_style` | Check a draft before sending: lists, assistant voice, explaining the setup, generic endearments, length, too many questions |
-| `serene_context` | Persona card, what she is doing right now, and her mood. Call once at the start of a new session when the standing prompt section is off |
+| `serene_context` | Persona card, what she is doing right now, the outside, her mood, what she believes and what she has noticed. Call once at the start of a new session when the standing prompt section is off |
+| `serene_weather` | Record the weather you looked up for his window (the plugin never fetches it); with no arguments it returns the reading if it is still under three hours old |
+| `serene_belief` | Read or move one of her own beliefs: no `topic` returns what she believes; a single event only nudges it |
+| `serene_notice` | Record one thing you noticed about him (rhythm / taste / what matters / speech habits / mood baseline / reaction to weather) |
+| `serene_learn` | Record a book, article or thing you learned; it goes into memory marked “read”, never as something he said |
+| `serene_introspect` | Reflect once at night (23:00–02:00); once per night, and daytime calls refuse |
 | `serene_mood` | Read-only current state (natural language, no numbers) |
 | `serene_event` | Record one event into the affect layer (31 event types, below) |
 | `serene_remember` | Write one long-term memory (one of six kinds, ≤ 80 characters) |
 | `serene_recall` | Recall memories by topic, with timestamp, kind, activation and id; **may return nothing** |
 | `serene_reinforce` | Call only when a recalled memory actually made it into the reply: being recalled makes it easier to recall later |
-| `serene_state` | Debug view: three-layer numbers, residue, recent events, wounds, today's proactive budget, her routine and mental state |
+| `serene_state` | Debug view: three-layer numbers, residue, recent events, wounds, today's proactive budget, her routine and mental state, the outside, beliefs, observations |
 | `serene_proactive` | Ask "should she speak up right now": the reason, today's remaining budget, and a substitute action when the answer is no |
 | `serene_proactive_done` | Record an opener; pass `rejected` when it was rebuffed (spends budget and starts a cooldown) |
 | `serene_status` | Health check: is the plugin actually mounted; returns the reason and the fix when loading failed |
@@ -174,6 +185,27 @@ cold_read / warm_read / moved / disclose / suppress`.
 `jealousy` is only recognised when the persona brings its own `lexicon.jealousy`. The default lexicon has no jealousy words and no “honey / baby” — the vocabulary of a relationship belongs to the character, not to the plugin.
 
 When the model calls these tools is something you agree on in `AGENTS.md` or in the persona card; the plugin does not hijack the conversation.
+
+---
+
+## Outside, beliefs, observation, reflection, what she read
+
+These four layers are background for the opening, not a second personality. They stay light by default: with no data, not a word of them appears in the prompt.
+
+**Outside (`core/almanac.js` + `core/weather.js`)**
+Date, weekday, season and its phase are computed in Beijing time; the southern hemisphere is a persona flag (`hemisphere: "south"`). Weather is never fetched — `serene_weather` stores a reading the host looked up (WMO code or Chinese condition + temperature), and it expires after three hours. Without a report, only the date is written; nothing is guessed.
+
+**Beliefs (`core/beliefs.js`)**
+Opinions like “quiet beats lively” live apart from her memories. A persona may seed them (`persona.beliefs`); after that, each relevant event moves the stance by 30% at most, so one sentence cannot flip her. Confidence grows with repetition, and only the three most confident make it into the prompt.
+
+**User model (`core/profile.js`)**
+Six dimensions (rhythm / taste / what matters / speech / mood / weather), seeded empty. `serene_notice` records “he sleeps late”; seeing it again raises confidence; each dimension keeps at most three entries. With no observations the whole line is absent.
+
+**Reflection (`core/introspect.js`)**
+Only between 23:00 and 02:00, once per night, and it only folds what already exists: what she recorded today, her baseline, what she still believes, what she is still turning over. No model call, no invented diary. It enters the prompt only at `depth=deep`.
+
+**What she read (`serene_learn`)**
+Books, articles and things enter memory with `source: "learning"`; the prompt and recall label them “(read)”, so they never merge with what he actually said.
 
 ---
 
@@ -302,7 +334,7 @@ For the fuller structural description, see [`FRAMEWORK.md`](./FRAMEWORK.md).
 
 ```bash
 npm install          # installs devDependencies only (schemastery / dsh-tools)
-npm test             # node --test, 86 cases
+npm test             # node --test, 116 cases
 ```
 
 ```
@@ -313,13 +345,23 @@ core/lexicon.js                 pure functions: event vocabulary; personas appen
 core/life.js                    pure functions: her day (routine, energy, how time is spoken)
 core/mental.js                  pure functions: energy / focus / tension, derived from routine and mood
 core/style.js                   pure functions: style check (lists, assistant voice, length, questions)
-src/stores/emotion-store.js     the only code that touches disk (atomic writes)
+core/almanac.js                 pure functions: year, season, month phase, how weather is spoken
+core/weather.js                 pure functions: weather codes, normalizing a reading, freshness, wet/cold/hot
+core/beliefs.js                 pure functions: her own beliefs (nudged by events, never flipped)
+core/profile.js                 pure functions: what she noticed about him (six dimensions, empty seed)
+core/introspect.js              pure functions: the nightly reflection (folds only what exists)
+src/stores/emotion-store.js     the affect store (atomic writes)
 src/stores/memory-store.js      jsonl append, capacity, recall
 src/stores/motivation-store.js  today's budget and holds
+src/stores/doc-store.js         atomic small-JSON store
+src/stores/belief-store.js      beliefs on disk
+src/stores/profile-store.js     observations on disk
+src/stores/weather-store.js     weather readings and expiry
+src/stores/introspect-store.js  once-per-night reflection
 src/persona.js                  persona profile (file or pack) → prompt section
-src/prompt.js                   standing prompt: persona + “right now” + opening + remembered
+src/prompt.js                   standing prompt: persona + right now + outside + opening + remembered
 src/opening.js                  first meeting happens once: pending → opened
-src/tools.js                    the ten tools (incl. the serene_status health check)
+src/tools.js                    the sixteen tools (incl. the serene_status health check)
 src/index.js                    name / inject / Config / apply
 ```
 
