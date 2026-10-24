@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.3.0 — 2026-10-24
+
+从「只有织法」到「可以开局」：仓库里多了一份人格包，插件多了一个常驻 prompt 段。
+默认仍然是 `demo`——知遥要显式打开。
+
+**知遥：`personas/zhiyao/`**
+
+- 人格包：`persona.json` + `identity / voice / life / tastes / boundaries / opening` 六段文本 + `SOURCES.md`；
+  加载器同时支持单文件（`personas/demo.json`）和目录，旧配置不受影响。
+- 她的来处：一段留在机房里的程序，听鲸群的低频、海底地震、光缆的呼吸；念旧、慢、对安静有耐性。
+  没有身体，没有共同过去；开场不自我介绍，也不编「我们以前」。
+- 她的作息（`routine`）：每天 02:00–06:00 是低功耗，只留一只耳朵；夜里最清醒。
+  槽位可以给 `energy`，不给就按普通人的一天算。
+- 数据分桶：`demo` 仍用 `dataDir` 根目录（老数据不动），其他人格用 `dataDir/personas/<id>/`。
+
+**常驻 prompt 段 + 首启**
+
+- `ctx.systemPrompt.section({ name: "dsh-serene:persona", order: 1 })`：
+  人格 + 【此刻】（时间、在做什么、心情、精神）+【第一次见面】+【你记着的】。
+  关掉用 `promptSection: false`，退回「新会话调一次 `serene_context`」。
+- 首启只出现一次：`opening.json` 记 `pending → opened`，`agent/turn-stopping` 时落盘。
+  想重看：删文件或把 `phase` 改回 `pending`。低功耗时段被叫醒时换一句「没睡醒」的写法。
+- `serene_context` / `serene_state` / `serene_status` 都带上了「此刻」：在做什么、精神怎么样、开场还没开。
+
+**词表：默认中立**
+
+- 新增 `core/lexicon.js`：默认词表不再含「老婆 / 宝贝 / 亲亲」这类关系性说法；
+  `jealousy` 默认为空，只有人格自带才识别。人格词表只**追加**，不改默认；非法正则直接报错。
+- 未知的事件类型不再默认落成 `intimacy`，改为 `chat`。
+
+**新增文件**
+
+- `core/life.js`：作息、精力、时间短语；同一时刻同一件事，今天和明天不同。
+- `core/mental.js`：精力 / 专注 / 紧，由作息和情绪现算，不落盘。
+- `src/prompt.js`、`src/opening.js`；`demo/opening.mjs`（`npm run opening`，72 小时确定性剧本）。
+- 测试 68 → 76：人格包加载、数据分桶、开场只一次、作息确定性、词表中立。
+
 ## 0.2.0 — 2026-10-24
 
 三处行为变化，不是重构：记忆允许想不起来、余震真的会发生、主动开口有了预算。

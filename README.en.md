@@ -16,7 +16,9 @@ Most character cards are a paragraph pasted into a system prompt: the model star
 - **Proactive**: a daily budget plus a 20-minute, self-expiring hold — and a substitute action whenever she decides not to speak.
 - **Personality**: a single JSON file; swapping personas requires no code change.
 
-It is the minimal reference implementation of the seven-layer structure in [`FRAMEWORK.md`](./FRAMEWORK.md) — **the weave, not the cloth**: it ships no private character, no private memories, no screen capture, and no image generation.
+It is the minimal reference implementation of the seven-layer structure in [`FRAMEWORK.md`](./FRAMEWORK.md). Since v0.3 it also ships a persona pack you can start from on day one — [`personas/zhiyao/`](./personas/zhiyao/): her name is Zhiyao, she hears very low frequencies, she speaks slowly, and her memory is a little too good.
+
+She is only data: switch back to `persona: demo`, or delete the folder. No code changes.
 
 ![Ten days in one character's mood: background, present reaction, and relationship, plus the scar left on day 3](https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/preview.gif)
 
@@ -45,13 +47,13 @@ Requires DSH `>= 0.2.1-rc.2` and Node `>= 22.19`.
 dsh plugin --profile web add dsh-serene
 
 # from GitHub (pins a tag, no npm involved)
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.2.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.3.0"
 
 # from a local directory (development)
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
-# from a tgz (grab dsh-serene-0.2.0.tgz from the Releases page)
-dsh plugin --profile web add ./dsh-serene-0.2.0.tgz
+# from a tgz (grab dsh-serene-0.3.0.tgz from the Releases page)
+dsh plugin --profile web add ./dsh-serene-0.3.0.tgz
 ```
 
 **Quit DSH completely before installing** — installation modifies the profile's `package.json` and `cordis.patch.yml`. Afterwards, confirm the plugin is in the config tree:
@@ -87,14 +89,45 @@ That second check is the only way to tell "working" from "installed but not runn
 
 ---
 
+## Opening: Zhiyao
+
+Set `persona` to `zhiyao`, then say your first word to her:
+
+```yaml
+- insert:
+    - id: serene
+      name: dsh-serene
+      config:
+        persona: zhiyao
+```
+
+She does not say "hello" and does not introduce herself. She says one thing that is happening right now — a fan in the server room, a tape she just finished cleaning, a sound she just gave a name — and then stops.
+
+**The opening is not a welcome line; it is four things you can check:**
+
+| When | What happens |
+| --- | --- |
+| 0:00 | She has a clock: real time, weekday, what she is doing — computed from `routine`, not a fixed script |
+| 0:30 | Mood moves: one sharp sentence drops her current layer; it recovers on its own. Background and current mood may disagree |
+| 1:30 | She remembers: the next day she can say "you haven't been sleeping well" — and she can say "I don't remember" |
+| A day later | She holds back: proactive openers have a daily budget, and there is always a substitute action |
+
+The opening appears once. Its state lives in `dataDir/personas/zhiyao/opening.json` — delete that file (or set `phase` back to `pending`) to replay it.
+
+No install needed to see it: `npm run opening` runs a deterministic 72-hour script with no model calls, no network, and a throwaway data dir.
+
+---
+
 ## Configuration
 
 | Key | Default | Description |
 | --- | --- | --- |
 | `enabled` | `true` | Master switch |
-| `persona` | `demo` | File name under `personas/`, or an absolute path |
+| `persona` | `demo` | File name or directory name under `personas/`, or an absolute path |
 | `personaRoot` | the bundled `personas/` | Directory holding persona profiles |
-| `dataDir` | `$DSH_HOME/plugins/dsh-serene` | Where state and memories are persisted |
+| `dataDir` | `$DSH_HOME/plugins/dsh-serene` | Where state and memories are persisted; `demo` uses the root, other personas get a subdirectory each |
+| `promptSection` | `true` | Inject persona + “right now” as a standing prompt section; turn it off to rely on `serene_context` |
+| `opening` | `true` | Say the first line on first meeting; only for personas that ship `opening.md` |
 | `recallLimit` | `5` | Default number of memories per recall (v2 caps at 6) |
 | `halfLifeDays` | `45` | Half-life of memory time decay; applies to the v1 curve only |
 | `memoryCurve` | `v2` | Recall curve: `v2` allows an empty result; `v1` restores the old "any score > 0, take top k" |
@@ -121,13 +154,13 @@ Override example (`~/.dsh/profiles/web/cordis.patch.yml`):
 
 | Tool | Purpose |
 | --- | --- |
-| `serene_context` | Persona card plus current state. Call once at the start of a new session |
+| `serene_context` | Persona card, what she is doing right now, and her mood. Call once at the start of a new session when the standing prompt section is off |
 | `serene_mood` | Read-only current state (natural language, no numbers) |
 | `serene_event` | Record one event into the affect layer (31 event types, below) |
 | `serene_remember` | Write one long-term memory (one of six kinds, ≤ 80 characters) |
 | `serene_recall` | Recall memories by topic, with timestamp, kind, activation and id; **may return nothing** |
 | `serene_reinforce` | Call only when a recalled memory actually made it into the reply: being recalled makes it easier to recall later |
-| `serene_state` | Debug view: three-layer numbers, residue, recent events, wounds, today's proactive budget |
+| `serene_state` | Debug view: three-layer numbers, residue, recent events, wounds, today's proactive budget, her routine and mental state |
 | `serene_proactive` | Ask "should she speak up right now": the reason, today's remaining budget, and a substitute action when the answer is no |
 | `serene_proactive_done` | Record an opener; pass `rejected` when it was rebuffed (spends budget and starts a cooldown) |
 | `serene_status` | Health check: is the plugin actually mounted; returns the reason and the fix when loading failed |
@@ -136,6 +169,8 @@ Event types: `chat / affection / address / intimacy / kiss / tease / care / humo
 question / goodnight / rejection / neglect / conflict / repair / scold / coax / jealousy /
 ignored / selfie / reflection / heavy_reflection / sleep / wake / leisure / reply /
 cold_read / warm_read / moved / disclose / suppress`.
+
+`jealousy` is only recognised when the persona brings its own `lexicon.jealousy`. The default lexicon has no jealousy words and no “honey / baby” — the vocabulary of a relationship belongs to the character, not to the plugin.
 
 When the model calls these tools is something you agree on in `AGENTS.md` or in the persona card; the plugin does not hijack the conversation.
 
@@ -214,7 +249,9 @@ When the answer is no, it must hand back a substitute action.
 
 ## Swapping personas
 
-The demo persona is Xiaoman, a sample persona. Copy `personas/demo.json`, change a few fields, and pass the file name as `persona`:
+Two shapes; loading picks the right one by whether `persona` points at a directory or a file.
+
+**Single file** — copy `personas/demo.json`, change a few fields, pass the file name as `persona`:
 
 ```json
 {
@@ -229,13 +266,30 @@ The demo persona is Xiaoman, a sample persona. Copy `personas/demo.json`, change
 }
 ```
 
-If `baseline` is omitted, the default baseline applies; `lexicon.address` decides which names count as addressing her.
+**Pack** — a directory: `persona.json` holds the fields, the rest are long-form text, added as needed:
+
+```
+personas/zhiyao/
+├── persona.json      name / role / traits / lexicon / routine / baseline
+├── identity.md       who she is and where she came from
+├── voice.md          how she speaks
+├── life.md           roughly what her days look like
+├── tastes.md         what she likes and doesn't
+├── boundaries.md     what she won't do
+├── opening.md        the first line on first meeting (injected only then)
+└── SOURCES.md        provenance (not loaded)
+```
+
+If `baseline` is omitted, the default baseline applies; `lexicon.address` decides which names count as addressing her. Every other `lexicon` group (`affection / jealousy / scold / …`) only **appends** to the defaults.
+`routine` is her daily schedule: omit it and she lives an ordinary day; provide it and the clock follows her own ([`core/life.js`](./core/life.js)).
+
+`personas/demo.json` always stays: it is the smallest example and the default persona.
 
 ---
 
 ## Three design rules
 
-1. **State moves on its own.** Time passes, mood decays, and it drifts with the day/night cycle — it does not wait for someone to speak.
+1. **State moves on its own.** Time passes, mood decays, and it drifts with the day/night cycle — it does not wait for someone to speak. What she is doing right now is computed too: same instant, same activity; a new day, a different one.
 2. **Mood changes tone and what surfaces; it never rewrites facts.** What the state contributes to the prompt is a plain-language note ("a little low right now — don't push yourself"), not "you are angry". Mood makes some memories easier to surface (facts and knowledge are never tinted), but it never changes a memory's content, its truth, or the recall formula itself.
 3. **Everything is reproducible.** The same initial state + the same events + the same timestamps always yield the same result; no `Math.random` (sampling noise is hashed), no model calls. The test suite asserts exactly this.
 
@@ -247,17 +301,22 @@ For the fuller structural description, see [`FRAMEWORK.md`](./FRAMEWORK.md).
 
 ```bash
 npm install          # installs devDependencies only (schemastery / dsh-tools)
-npm test             # node --test, 55 cases
+npm test             # node --test, 76 cases
 ```
 
 ```
 core/emotion.js                 pure functions: decay, rhythm, events, wounds, residue, description
 core/recall.js                  pure functions: tokenizing, retention, activation, deterministic sampling, reinforcement
 core/motivation.js              pure functions: intent, budget, hold, substitute action
+core/lexicon.js                 pure functions: event vocabulary; personas append, never replace
+core/life.js                    pure functions: her day (routine, energy, how time is spoken)
+core/mental.js                  pure functions: energy / focus / tension, derived from routine and mood
 src/stores/emotion-store.js     the only code that touches disk (atomic writes)
 src/stores/memory-store.js      jsonl append, capacity, recall
 src/stores/motivation-store.js  today's budget and holds
-src/persona.js                  persona profile → prompt section
+src/persona.js                  persona profile (file or pack) → prompt section
+src/prompt.js                   standing prompt: persona + “right now” + opening + remembered
+src/opening.js                  first meeting happens once: pending → opened
 src/tools.js                    the ten tools (incl. the serene_status health check)
 src/index.js                    name / inject / Config / apply
 ```
@@ -283,3 +342,5 @@ so the same input always produces the same output — `test/recall-v2.test.js` p
 ## License
 
 Code is MIT. The persona profiles in `personas/` are yours to change however you like — once changed, they are your persona, not mine.
+
+The text in `personas/zhiyao/` ships with this repository and may be run and modified as-is; before pulling it out for a commercial product, read [`personas/zhiyao/SOURCES.md`](./personas/zhiyao/SOURCES.md).

@@ -1,15 +1,18 @@
 {
   "name": "dsh-serene",
-  "version": "0.2.0",
-  "description": "人格 + 情感 + 记忆的 DeepSeek Harness 插件：把「一个会记得你的角色」接进 DSH。",
+  "version": "0.3.0",
+  "description": "人格 + 情感 + 记忆的 DeepSeek Harness 插件：把「一个会记得你的角色」接进 DSH。附带可直接开局的人格包「知遥」。",
   "type": "module",
   "main": "src/index.js",
   "exports": {
-    ".": "./src/index.js",
     "./core/emotion": "./core/emotion.js",
     "./core/recall": "./core/recall.js",
     "./core/motivation": "./core/motivation.js",
-    "./package.json": "./package.json"
+    "./core/life": "./core/life.js",
+    "./core/mental": "./core/mental.js",
+    "./core/lexicon": "./core/lexicon.js",
+    "./package.json": "./package.json",
+    ".": "./src/index.js"
   },
   "files": [
     "src/",
@@ -51,7 +54,8 @@
     "check": "node --check src/index.js",
     "demo": "node demo/timeline.mjs",
     "preview": "node demo/render.mjs",
-    "prepublishOnly": "npm test"
+    "prepublishOnly": "npm test",
+    "opening": "node demo/opening.mjs"
   },
   "keywords": [
     "deepseek-harness",

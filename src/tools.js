@@ -8,6 +8,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { EVENT_EFFECTS } from "../core/emotion.js";
+import { lifeAt, lifeBlock } from "../core/life.js";
+import { mentalAt, mentalLine } from "../core/mental.js";
 import { MEMORY_KINDS, MAX_TEXT_CHARS } from "../core/recall.js";
 import { PROACTIVE, describeDecision } from "../core/motivation.js";
 import { buildPersonaBlock } from "./persona.js";
@@ -30,7 +32,7 @@ try {
 const asText = (value) => [{ type: "text", text: String(value ?? "") }];
 const stringOutput = { schema: { type: "string" }, render: (_args, value) => asText(value) };
 
-export function registerTools(ctx, { emotion, memory, motivation, persona, config }) {
+export function registerTools(ctx, { emotion, memory, motivation, opening = null, persona, config, dataDir = "" }) {
   if (typeof defineTool !== "function") {
     throw new Error(
       "无法加载 @deepseek-ai/dsh-tools（工具注册依赖 DSH 宿主提供该包）。" +
@@ -49,8 +51,11 @@ export function registerTools(ctx, { emotion, memory, motivation, persona, confi
       parameters: {},
       output: stringOutput,
       async execute() {
-        const snapshot = emotion.snapshot();
-        return `${buildPersonaBlock(persona)}\n\n${snapshot.text}`;
+        const now = Date.now();
+        const snapshot = emotion.snapshot({ now });
+        const life = lifeAt(now, { seed: persona.id, routine: persona.routine });
+        const moment = `【此刻】${lifeBlock(life)}\n${mentalLine(mentalAt(life, snapshot.layers))}`;
+        return `${buildPersonaBlock(persona)}\n\n${moment}\n\n${snapshot.text}`;
       },
     }),
   );
@@ -204,12 +209,14 @@ export function registerTools(ctx, { emotion, memory, motivation, persona, confi
   ctx.tools.register(
     defineTool({
       name: "serene_state",
-      description: "调她的内部状态（调试用）：三层数值、余震、最近事件、疤、今天的主动额度。对方看不到这些数字。",
+      description: "调她的内部状态（调试用）：三层数值、余震、最近事件、疤、此刻在做什么、今天的主动额度。对方看不到这些数字。",
       parameters: {},
       output: stringOutput,
       async execute() {
-        const snapshot = emotion.snapshot();
-        const causes = emotion.causes();
+        const now = Date.now();
+        const life = lifeAt(now, { seed: persona.id, routine: persona.routine });
+        const snapshot = emotion.snapshot({ now, asleep: life.asleep });
+        const causes = emotion.causes(now);
         return JSON.stringify(
           {
             layers: snapshot.layers,
@@ -221,6 +228,15 @@ export function registerTools(ctx, { emotion, memory, motivation, persona, confi
             },
             tone: snapshot.tone,
             mood: snapshot.mood,
+            life: {
+              week: life.weekday,
+              phase: life.phase,
+              place: life.place,
+              activity: life.activity,
+              asleep: life.asleep,
+            },
+            mental: mentalAt(life, snapshot.layers),
+            opening: opening?.snapshot?.() ?? null,
             residue: snapshot.residue,
             wounds: snapshot.wounds,
             proactive: motivation.snapshot(),
@@ -283,7 +299,7 @@ export function registerTools(ctx, { emotion, memory, motivation, persona, confi
   );
 
   // 最后一条：无论前面注册了几个，它都在（人格失败时这是唯一的一个）。
-  registerStatusTool(ctx, { persona, memory, motivation, dataDir: config.dataDir });
+  registerStatusTool(ctx, { persona, memory, motivation, opening, dataDir: dataDir || config.dataDir });
 }
 
 /**
@@ -293,7 +309,10 @@ export function registerTools(ctx, { emotion, memory, motivation, persona, confi
  * 「什么都不注册」。以前那种降级对用户完全不可见——模型只能回一句
  * 「没有这个工具」，用户以为是模型不会用。现在至少有一个入口能问出原因。
  */
-export function registerStatusTool(ctx, { persona = null, memory = null, motivation = null, dataDir = "", error = null } = {}) {
+export function registerStatusTool(
+  ctx,
+  { persona = null, memory = null, motivation = null, opening = null, dataDir = "", error = null } = {},
+) {
   if (typeof defineTool !== "function") {
     throw new Error(
       "无法加载 @deepseek-ai/dsh-tools（工具注册依赖 DSH 宿主提供该包）。" +
@@ -323,12 +342,16 @@ export function registerStatusTool(ctx, { persona = null, memory = null, motivat
           ].join("\n");
         }
         const stateFile = join(dataDir, "emotion.json");
+        const now = Date.now();
+        const life = persona ? lifeAt(now, { seed: persona.id, routine: persona.routine }) : null;
         const lines = [
           "dsh-serene 已挂载。",
-          `- 人格：${persona?.name ?? "(未知)"}`,
+          `- 人格：${persona?.name ?? "(未知)"}${persona?.id ? `（${persona.id}）` : ""}`,
           `- 数据目录：${dataDir || "(默认)"}`,
           `- 情感状态：${existsSync(stateFile) ? `${stateFile}（已生成）` : "尚未生成，第一次记事件时创建"}`,
         ];
+        if (life) lines.push(`- 此刻：${lifeBlock(life, { compact: true })}`);
+        if (opening) lines.push(`- 第一次见面：${opening.pending() ? "还没开场（下一次对话会说第一句）" : "已经开过场"}`);
         if (memory) {
           const stats = memory.stats();
           const kinds = Object.entries(stats.kinds)

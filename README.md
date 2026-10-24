@@ -19,8 +19,10 @@
 - 主动：每天几次的打扰预算 + 20 分钟可回收的 hold，不说也有替代动作；
 - 人格：一份 JSON，换人格不用改代码。
 
-它是 [`FRAMEWORK.md`](./FRAMEWORK.md) 里那套七层结构的最小参考实现——**只有织法，没有布**：
-不包含任何私人角色、私人记忆、屏幕采集或图像生成。
+它是 [`FRAMEWORK.md`](./FRAMEWORK.md) 里那套七层结构的最小参考实现。从 v0.3 起，仓库里附带一份可以**直接开局**的人格包——
+[`personas/zhiyao/`](./personas/zhiyao/)：她叫知遥，听得见很低的频率，说话慢，记性好得有点念旧。
+
+她只是数据：不想要就换回 `persona: demo`，或者删掉那个目录。框架一行都不用改。
 
 ![十天，一个人的情绪怎么走：底色、此刻、关系三条线，以及第 3 天留下的那道疤](https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/preview.gif)
 
@@ -50,13 +52,13 @@
 dsh plugin --profile web add dsh-serene
 
 # 从 GitHub 装（跟着 tag，不经过 npm）
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.2.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.3.0"
 
 # 从本地目录装（开发时）
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
-# 从 tgz 装（去 Release 页面下 dsh-serene-0.2.0.tgz）
-dsh plugin --profile web add ./dsh-serene-0.2.0.tgz
+# 从 tgz 装（去 Release 页面下 dsh-serene-0.3.0.tgz）
+dsh plugin --profile web add ./dsh-serene-0.3.0.tgz
 ```
 
 安装前**先完全退出 DSH**（安装会改 profile 的 `package.json` 和 `cordis.patch.yml`）。
@@ -97,14 +99,47 @@ export DEEPSEEK_API_KEY=sk-...      # 或者先在 GUI 的 Models 页填一次
 
 ---
 
+## 开局：知遥
+
+把 `persona` 换成 `zhiyao`，再跟她说第一句话：
+
+```yaml
+- insert:
+    - id: serene
+      name: dsh-serene
+      config:
+        persona: zhiyao
+```
+
+她不会说「你好」，也不自我介绍。她先说一句此刻的事——机房的风扇、一段刚整理好的录音、
+一个刚被起好名字的声音——然后停住，把话头留给你。
+
+**「开局」不是一句欢迎语，是四件能验证的事：**
+
+| 时间 | 发生什么 |
+| --- | --- |
+| 0:00 | 她有一块表：真实时间、星期几、此刻在做什么，由 `routine` 算出来，不是写死的台词 |
+| 0:30 | 心情会变：一句冲的话让她当场沉下去，过一阵自己回来；底色和此刻可以不一致 |
+| 1:30 | 她记得住：第二天说得出「你最近睡得不好」；想不起来时也会说想不起来 |
+| 隔一天 | 她知道收住：主动开口有每日预算，不说的时候有替代动作 |
+
+开场只出现一次。状态在 `dataDir/personas/zhiyao/opening.json`：想再看一次，删掉它，
+或把 `phase` 改回 `pending`。
+
+不想装、想先看：`npm run opening` 跑 72 小时的确定性剧本，不调模型、不联网，跑完清掉临时数据。
+
+---
+
 ## 配置
 
 | 键 | 默认 | 说明 |
 | --- | --- | --- |
 | `enabled` | `true` | 总开关 |
-| `persona` | `demo` | `personas/` 下的文件名，或绝对路径 |
+| `persona` | `demo` | `personas/` 下的文件名、目录名，或绝对路径 |
 | `personaRoot` | 插件自带 `personas/` | 人格档案目录 |
-| `dataDir` | `$DSH_HOME/plugins/dsh-serene` | 状态与记忆落盘位置 |
+| `dataDir` | `$DSH_HOME/plugins/dsh-serene` | 状态与记忆落盘位置；`demo` 用根目录，其它人格各自一个子目录 |
+| `promptSection` | `true` | 把人格 +【此刻】作为常驻 prompt 段注入；关掉就只能靠 `serene_context` |
+| `opening` | `true` | 第一次见面说第一句；只对带 `opening.md` 的人格生效 |
 | `recallLimit` | `5` | 每次召回默认条数；v2 口径下最多 6 条 |
 | `halfLifeDays` | `45` | 记忆时间衰减半衰期，只对 v1 口径生效 |
 | `memoryCurve` | `v2` | 召回口径：`v2` 允许想不起来；`v1` 回退到旧的「有分就取前 k 条」 |
@@ -131,13 +166,13 @@ export DEEPSEEK_API_KEY=sk-...      # 或者先在 GUI 的 Models 页填一次
 
 | 工具 | 作用 |
 | --- | --- |
-| `serene_context` | 人格卡 + 此刻状态。新会话开头调一次 |
+| `serene_context` | 人格卡 +【此刻】在做什么 + 心情。常驻 prompt 关掉时，新会话开头调一次 |
 | `serene_mood` | 只读此刻状态（自然语言，不含数值） |
 | `serene_event` | 记一件事进情感层（31 种事件，见下） |
 | `serene_remember` | 写一条长期记忆（六类之一，≤ 80 字） |
 | `serene_recall` | 按话题召回记忆，带时间、类型、激活度和 id；**可以一条都不返回** |
 | `serene_reinforce` | 这几条真的用进回复了才调：被想起会让它以后更容易被想起 |
-| `serene_state` | 调试用：三层数值、余震、最近事件、疤、今天的主动额度 |
+| `serene_state` | 调试用：三层数值、余震、最近事件、疤、今天的主动额度、此刻的作息与精神 |
 | `serene_proactive` | 问「现在该不该主动开口」：理由、今日额度、不说时的替代动作 |
 | `serene_proactive_done` | 开口之后记一次；被拒了传 `rejected`，扣额度并冷却 |
 | `serene_status` | 诊断：插件是否真的挂上；加载失败时返回原因和修法 |
@@ -146,6 +181,9 @@ export DEEPSEEK_API_KEY=sk-...      # 或者先在 GUI 的 Models 页填一次
 question / goodnight / rejection / neglect / conflict / repair / scold / coax / jealousy /
 ignored / selfie / reflection / heavy_reflection / sleep / wake / leisure / reply /
 cold_read / warm_read / moved / disclose / suppress`。
+
+`jealousy` 只在人格自带 `lexicon.jealousy` 时才会被识别。默认词表里没有它，也没有「老婆 / 宝贝 / 亲亲」——
+关系性的词是她自己的，不该由插件替她预设。
 
 模型什么时候调用这些工具，由你在 `AGENTS.md` 或人格卡里约定；插件不劫持对话。
 
@@ -225,7 +263,9 @@ v2 改成激活度 + 确定性抽样：
 
 ## 换一个人格
 
-复制 `personas/demo.json`，改几个字段，文件名当 `persona` 传进去：
+两种写法，加载时按「目录 / 单文件」自动区分。
+
+**单文件**：复制 `personas/demo.json` 改几个字段，文件名当 `persona` 传进去：
 
 ```json
 {
@@ -240,13 +280,32 @@ v2 改成激活度 + 确定性抽样：
 }
 ```
 
-`baseline` 省略就用默认基线；`lexicon.address` 决定哪些称呼会被识别成「叫你」。
+**人格包**：一个目录，`persona.json` 放字段，其余是长文本，按需加：
+
+```
+personas/zhiyao/
+├── persona.json      name / role / traits / lexicon / routine / baseline
+├── identity.md       她是谁、从哪来
+├── voice.md          怎么说话（短句、不列点、不解释设定……）
+├── life.md           她的一天大概什么样
+├── tastes.md          喜欢什么、不喜欢什么
+├── boundaries.md     不会做的事
+├── opening.md        第一次见面说什么（只对首启注入）
+└── SOURCES.md        这份人格从哪来（不参与加载）
+```
+
+`baseline` 省略就用默认基线；`lexicon.address` 决定哪些称呼会被识别成「叫你」；
+其余 `lexicon` 分组（`affection / jealousy / scold / …`）只做**追加**，默认表不动。
+`routine` 是她的作息：不给就按普通人的一天走；给了就按她的算（见 [`core/life.js`](./core/life.js)）。
+
+`personas/demo.json` 永远在：它是最小示例，也是默认人格。
 
 ---
 
 ## 三条设计约定
 
 1. **状态自己走。** 时间过去，情绪就衰减、就随昼夜波动——不需要谁说话才动。
+   她此刻在做什么也是算出来的：同一个时刻永远同一件事，今天和明天不一样。
 2. **情绪只影响语气和浮现，不改写事实。** 状态进 prompt 的是一段人话（「这会儿有点低，别硬撑」），
    不是「你现在很生气」。心情会让某类记忆更容易浮起来（事实 / 知识类不染），
    但不改记忆的内容、不改真假、也不改召回公式本身。
@@ -261,17 +320,22 @@ v2 改成激活度 + 确定性抽样：
 
 ```bash
 npm install          # 只装 devDependencies（schemastery / dsh-tools）
-npm test             # node --test，55 个用例
+npm test             # node --test，76 个用例
 ```
 
 ```
 core/emotion.js           纯函数：衰减、节律、事件、疤、余震、描述
 core/recall.js            纯函数：分词、保持率、激活度、确定性抽样、强化
 core/motivation.js        纯函数：意图、预算、hold、替代动作
+core/lexicon.js           纯函数：事件词表；人格只追加，不改默认
+core/life.js              纯函数：她的一天（作息、精力、时间怎么说）
+core/mental.js            纯函数：精神（精力 / 专注 / 紧），由作息和情绪现算
 src/stores/emotion-store.js     唯一碰磁盘的地方（原子写）
 src/stores/memory-store.js      jsonl 追加、容量、召回
 src/stores/motivation-store.js  今天的额度与 hold
-src/persona.js            人格档案 → prompt 段
+src/persona.js            人格档案（单文件 / 目录）→ prompt 段
+src/prompt.js             常驻 prompt 段：人格 +【此刻】+ 首启 + 记着的
+src/opening.js            首启只说一次：pending → opened
 src/tools.js              10 个工具（含 serene_status 诊断）
 src/index.js              name / inject / Config / apply
 ```
@@ -299,3 +363,6 @@ grep -n "node:fs\|process.env\|fetch(" core/*.js   # 应该没有输出
 ## License
 
 代码 MIT。人格档案（`personas/`）随你改成什么样都行，改完是你的人格，不是我的。
+
+`personas/zhiyao/` 的文本随仓库分发、允许原样运行与修改；要单独抽出来做商业产品，先看
+[`personas/zhiyao/SOURCES.md`](./personas/zhiyao/SOURCES.md)。

@@ -15,6 +15,10 @@
  * 存储与时钟都在外面：见 src/stores/emotion-store.js。
  */
 
+import { resolveLexicon } from "./lexicon.js";
+
+export { addressMatcher } from "./lexicon.js";
+
 const HOUR = 3_600_000;
 const clamp = (value) => Math.max(0, Math.min(100, Number(value) || 0));
 const round = (value) => Math.round(value * 10) / 10;
@@ -437,7 +441,13 @@ export const EVENT_EFFECTS = {
     social: { pleasure: 1.5, connection: 3 },
     background: { pleasure: 0.2, connection: 0.3 },
   },
-  /** 吃醋：对方提到别的女人。幅度刻意小——她不会为这个翻脸，只会心口紧一下、想多问一句。 */
+  /**
+   * 吃醋：对方提到了别人。
+   *
+   * 默认词表里**没有**这一类——会不会吃醋是关系设定，不是情绪机制。
+   * 人格在自己的 `lexicon.jealousy` 里写了词，这条才会被自动分类用到；
+   * 也可以由 agent 显式记一条。
+   */
   jealousy: {
     primary: { pleasure: -5, arousal: 6, dominance: -2, curiosity: 3, confidence: -3, connection: -2 },
     social: { pleasure: -1, connection: -1 },
@@ -534,7 +544,7 @@ export const EVENT_NOTES = {
   repair: "对方跟你道歉了",
   scold: "对方有点不耐烦",
   coax: "对方哄了你一句",
-  jealousy: "对方提到了别的女人",
+  jealousy: "对方提到了别人",
   ignored: "你说了话，对方一直没接",
   selfie: "你拍了一张自拍",
   reflection: "你安静地想了一会儿",
@@ -560,21 +570,14 @@ export const EVENT_NOTES = {
  * 仍然是纯函数：同样的文本 + 同样的 layers，永远得到同样的结果。
  *
  * @param {{text?: string, action?: object|null, image?: any, card?: any, from?: string, id?: string}} message
- * @param {{layers?: object|null, bias?: number|null}} [options] layers 用来算情绪偏置；bias 可直接注入（测试/调试）
+ * @param {{layers?: object|null, bias?: number|null, lexicon?: object|null}} [options]
+ *   layers 用来算情绪偏置；bias 可直接注入（测试/调试）；
+ *   lexicon 是人格自带的词表（见 core/lexicon.js），不给就只有中立默认。
  * @returns {{kind: string, note: string, intensity: number}|null}
  */
-export function addressMatcher(names) {
-  const list = (Array.isArray(names) ? names : [names])
-    .map((name) => String(name ?? "").trim())
-    .filter(Boolean);
-  if (!list.length) return null;
-  const escaped = list.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  return new RegExp(`(?:^|[，。！？；：、\\s])(?:${escaped.join("|")})(?:[，,。！？!?~～\\s]|$)`);
-}
-
 export function classifyMessage(message, { layers = null, bias = null, lexicon = null } = {}) {
-  const address = addressMatcher(lexicon?.address);
   if (!message || (message.from && message.from !== "me")) return null;
+  const lex = resolveLexicon(lexicon);
   const text = String(message.text ?? "").trim();
   const exclaim = (text.match(/[!！]/g) ?? []).length;
   const base = Math.min(1.35, 0.9 + Math.min(0.3, text.length / 160) + Math.min(0.15, exclaim * 0.05));
@@ -589,10 +592,10 @@ export function classifyMessage(message, { layers = null, bias = null, lexicon =
   };
 
   // 动作优先：身体接触不是一句话。
-  // 动作自带 kind（摸头=亲近 / 亲=吻 / 挠=逗 / 尾巴 / 脚），落进情感层就不该都算成同一件事；
-  // intensity 也由动作自己给（连着做会被衰减，见 interactions.pickIntensity）。
+  // 动作自带 kind（点头=chat / 拥抱=affection / 逗=tease），落进情感层就不该都算成同一件事；
+  // intensity 也由动作自己给。认不了的 kind 退回 chat，不要替人格猜「这是亲近」。
   if (message.action) {
-    const kind = EVENT_EFFECTS[message.action.kind] ? message.action.kind : "intimacy";
+    const kind = EVENT_EFFECTS[message.action.kind] ? message.action.kind : "chat";
     const strength = Number(message.action.intensity);
     return {
       kind,
@@ -607,32 +610,29 @@ export function classifyMessage(message, { layers = null, bias = null, lexicon =
   }
 
   // 认错：对方认了这件事是对方不对——位置会回来一点。
-  if (/(对不起|抱歉|我错了|是我不好|不该凶|原谅我)/.test(text)) return make("repair");
+  if (lex.repair.test(text)) return make("repair");
   // 狠话：冲着「你们的关系」来的（赶人、分手、否定你这个人）。原来「闭嘴/烦死」也混在这一档里，
   // 一句「烦死了」和一句「受够了，分手」掉同样的血，那不是她敏感，是尺子只有一把。
-  if (/(滚|分手|受够了|你根本|有病|不想理你|你走吧|讨厌你)/.test(text)) return make("conflict");
+  if (lex.conflict.test(text)) return make("conflict");
   // 冲一句：冲着「这一刻的事」来的（烦、不耐烦、让你闭嘴）。伤当下，不伤位置。
-  if (/(闭嘴|烦死|别烦我|凭什么|懒得|随便你|你懂什么|不听话)/.test(text)) return make("scold");
-  // 吃醋：对方提到别的女人。否定句不算——「没有别人，只有你」是在安心，不是在扎人。
-  // 这一条必须排在 affection 前面：不然「她挺好看」里的「好看」会先被当成在夸她。
-  if (
-    /(女同事|女同学|前女友|相亲|别的女(?:生|人)|另一个女|其对方女|别人家的(?:女朋友|老婆)|她(?:挺|很|特别)?好看)/.test(text) &&
-    !/(没有别人|没有别的|只有你|只喜欢你|只爱你)/.test(text)
-  ) {
+  if (lex.scold.test(text)) return make("scold");
+  // 吃醋：只有人格在 lexicon.jealousy 里写了词，这一条才会命中。
+  // 否定句不算——「没有别人，只有你」是在安心，不是在扎人。
+  // 这一条排在 affection 前面：不然「她挺好看」里的「好看」会先被当成在夸她。
+  if (lex.jealousy && lex.jealousy.test(text) && !/(没有别人|没有别的|只有你|只喜欢你|只爱你)/.test(text)) {
     return make("jealousy");
   }
-  if (/(晚安|睡了|去睡|睡觉|困了|躺下)/.test(text)) return make("goodnight");
+  if (lex.goodnight.test(text)) return make("goodnight");
   // 哄：说软话让你别气，但没认错——和「道歉」分开，位置不动（见 coax 的 dominance）。
-  if (/(别生气|别气了|不气了|消消气|乖乖|乖啦|乖呀|好啦好啦|我哄你|哄哄你|(?<!不)听话)/.test(text)) return make("coax");
-  if (/(喜欢你|爱你|想你了|想你|抱抱|亲亲|么么|宝贝|老婆|可爱|好看|漂亮|温柔|辛苦|夸你)/.test(text)) return make("affection");
-  if (address && address.test(text)) return make("address");
-  if (/(累不累|吃没吃|吃饭了吗|早点睡|休息|别熬夜|喝水|照顾|冷不冷|热不热|辛苦)/.test(text)) return make("care");
-  // 拒绝要真的是「对方这会儿腾不出手」：光提到「忙」不算——「你在忙什么」是在问她，
-  // 以前这句会被判成拒绝（P0 第 5 轮愉悦 −7.5，D1 复测又踩了一次）。
-  if (/(我(还|这|正)?在忙|这(会|会儿)在忙|忙完(再)?(说|聊|回)|没空|先不聊|回头说|晚点(再)?(说|聊|回)|等会(儿)?再说|别闹)/.test(text)) return make("rejection");
-  if (/(哈哈|笑死|搞笑|绷不住|离谱|绝了|乐死|梗)/.test(text)) return make("humor");
+  if (lex.coax.test(text)) return make("coax");
+  if (lex.affection.test(text)) return make("affection");
+  if (lex.address && lex.address.test(text)) return make("address");
+  if (lex.care.test(text)) return make("care");
+  // 拒绝要真的是「对方这会儿腾不出手」：光提到「忙」不算——「你在忙什么」是在问她。
+  if (lex.rejection.test(text)) return make("rejection");
+  if (lex.humor.test(text)) return make("humor");
   if (message.card || message.image) return make("share");
-  if (/(我今天|我刚|我跟你说|你猜|分享|听歌|看剧|游戏|工作|项目|股票|直播)/.test(text)) return make("share");
+  if (lex.share.test(text)) return make("share");
   if (/([?？]|吗|呢|是什么|为什么|怎么|什么|哪|多少)/.test(text)) return make("question");
   // 情绪改判只碰「模糊句」：短、没有问号/感叹号、也没有明确的正向词。
   // 明确的亲密、道歉、冲突、玩笑仍然按字面走——她可以被心情带偏，但不能被心情改写事实。
@@ -647,7 +647,7 @@ function isAmbiguous(text) {
   const said = String(text ?? "").replace(/\s/g, "");
   if (said.length === 0 || said.length > 14) return false;
   if (/[?？!！]/.test(said)) return false;
-  return !/(哈哈|笑死|爱你|喜欢你|抱抱|亲亲|么么|滚|分手|对不起|抱歉)/.test(said);
+  return !/(哈哈|笑死|爱你|喜欢你|抱抱|滚|分手|对不起|抱歉)/.test(said);
 }
 
 /**
