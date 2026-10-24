@@ -36,7 +36,7 @@
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
 # 从 GitHub 装（发布后）
-dsh plugin --profile web add "github:Something11235/dsh-serene#v0.1.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.1.0"
 
 # 从 tgz 装（Release 里下载）
 dsh plugin --profile web add ./dsh-serene-0.1.0.tgz

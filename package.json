@@ -57,11 +57,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Something11235/dsh-serene.git"
+    "url": "git+https://github.com/chisato-lycoreco/dsh-serene.git"
   },
   "bugs": {
-    "url": "https://github.com/Something11235/dsh-serene/issues"
+    "url": "https://github.com/chisato-lycoreco/dsh-serene/issues"
   },
-  "homepage": "https://github.com/Something11235/dsh-serene#readme",
+  "homepage": "https://github.com/chisato-lycoreco/dsh-serene#readme",
   "license": "MIT"
 }
