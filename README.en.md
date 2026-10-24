@@ -1,13 +1,17 @@
-[中文](./README.md) | English
-
 # dsh-serene
 
-> **Just want to chat without installing DSH?** Jump to [Start here: double-click it](#start-here-double-click-it-no-code).
+![dsh-serene: not how well she acts, whether she survives](https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/banner-en.jpg)
 
-[![npm](https://img.shields.io/npm/v/dsh-serene.svg)](https://www.npmjs.com/package/dsh-serene)
+[![npm](https://img.shields.io/npm/v/dsh-serene.svg?labelColor=0a161d&color=4f9e94)](https://www.npmjs.com/package/dsh-serene)
 [![CI](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml/badge.svg)](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
-[![DSH](https://img.shields.io/badge/dsh-0.2.1--rc.2-4d6bfe.svg)](https://deepseek-harness.github.io/deepseek-harness/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-4f9e94.svg?labelColor=0a161d)](./LICENSE)
+[![DSH](https://img.shields.io/badge/dsh-0.2.1--rc.2-4f9e94.svg?labelColor=0a161d)](https://deepseek-harness.github.io/deepseek-harness/)
+
+[中文](./README.md) | English
+
+**Companionship is not how well it acts. It's whether it survives.**
+
+> **Just want to chat without installing DSH?** Jump to [Start here: double-click it](#start-here-double-click-it-no-code).
 
 > A character that remembers you, wired into [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) — personality as data, mood as state, memory as a file, all three readable, editable, and reproducible.
 
@@ -30,13 +34,227 @@ That chart is not drawn by hand: `node demo/timeline.mjs` runs ten days through 
 
 ---
 
+## Contents
+
+**Understand** · [Vision](#vision) — why this exists ｜ [Design philosophy](#design-philosophy) — seven judgments, and what they turn into
+
+**Start** · [Double-click it](#start-here-double-click-it-no-code) ｜ [Installation](#installation) ｜ [Opening: Zhiyao](#opening-zhiyao) ｜ [Making her yours with DSH](#making-her-yours-with-dsh)
+
+**Reference** · [What it does](#what-it-does-what-it-doesnt) ｜ [Configuration](#configuration) ｜ [Tools](#tools) ｜ [Outside, beliefs, observation](#outside-beliefs-observation-reflection-what-she-read) ｜ [What the data looks like](#what-the-data-looks-like) ｜ [Swapping personas](#swapping-personas) ｜ [Development](#development) ｜ [Other plugins](#relationship-to-other-plugins)
+
+<details>
+<summary>All subsections</summary>
+
+**Design philosophy** ·
+[1 Continuity](#1-continuity-over-intensity) ·
+[2 Restraint](#2-restraint-is-a-budget-not-a-gate) ·
+[3 Honesty](#3-honesty-is-part-of-the-setting) ·
+[4 Service](#4-service-is-a-job-not-a-posture) ·
+[5 Cost](#5-a-relationship-must-cost-something) ·
+[6 Mood](#6-mood-changes-the-tone-and-what-surfaces-never-the-facts) ·
+[7 Explainable](#7-explainable-beats-stronger) ·
+[The three things](#three-things-these-judgments-turn-into)
+
+**Double-click it** ·
+[1 Node.js](#step-1-install-nodejs-once) ·
+[2 Download](#step-2-download-the-repository) ·
+[3 Extract](#step-3-extract-it-to-a-clean-path) ·
+[4 Start](#step-4-double-click-to-start) ·
+[5 Key](#step-5-paste-your-deepseek-key-once) ·
+[6 Talk](#step-6-talk-to-her) ·
+[7 Restart](#step-7-stopping-and-restarting) ·
+[Data](#where-the-data-lives-and-how-to-back-it-up) ·
+[Troubleshooting](#troubleshooting) ·
+[What's on the page](#what-is-on-the-page) ·
+[Web app vs plugin](#how-the-web-app-relates-to-the-dsh-plugin)
+
+**Making her yours** ·
+[1 Make her exist](#step-1-make-her-exist-fifteen-minutes) ·
+[2 Persona](#step-2-write-a-persona-that-is-only-her) ·
+[3 Rules](#step-3-write-the-rules-agentsmd) ·
+[4 Look inside](#step-4-look-inside-or-youre-tuning-your-imagination) ·
+[5 Symptom → knob](#step-5-symptom-knob) ·
+[6 One variable](#step-6-move-one-slow-variable-at-a-time) ·
+[7 Co-author](#step-7-let-dsh-be-your-co-author) ·
+[What not to do](#four-things-not-to-do)
+
+</details>
+
+---
+
+## Vision
+
+**Companionship is not how well it acts. It's whether it survives.**
+
+A character can feel right in three lines: the tics, the tone, the setting recited back at you. It still won't last a month. Not because the model isn't smart enough, but because it has **no state**: yesterday's argument doesn't exist today, you vanish for three days and the voice never changes, and it says "I remember you said that" with nothing behind the sentence.
+
+We broke that into five places you can actually fix — measured one by one inside a project that is still running, not guessed:
+
+| Where it breaks | What it looks like | What this repo does |
+| --- | --- | --- |
+| Memory pinned to the backdrop | Every turn packs the prompt; average relevance 0.05; one entry injected 458 times across 922 turns | Recall may return nothing ([recall v2](#what-changed-in-020)) |
+| Personality rotating, not growing | Rewritten every two or three hours, replacing 20–30% of the entries each time; whatever was written first is squeezed out silently | Nothing rewrites her: only you change L0; what grows on its own is beliefs and observations |
+| Restraint ratcheting | 171 of 172 decisions were "say nothing", and each silence raised the bar for the next | `hold` decays in 20 minutes and always carries a substitute action |
+| Truth split in three | The same fact defined three ways; she is two different people on different days | One source of truth, three speeds (below) |
+| Rules ate the conversation | Rules took 95% of the prompt; "what he just said" got 5% | The expression check only checks — it never generates or rewrites |
+
+So the test is no longer "does she sound right". It's three questions — from the same set of design notes; this is their public skeleton:
+
+| # | Question | If it fails |
+| --- | --- | --- |
+| 1 | **Does she remember?** The thing you said last week, the place she went on her own, the joke only you two have — still true today? | Zero every morning |
+| 2 | **Does she have a today?** Her own hours, her own business, her own mood with a cause — or does she exist only when called? | A function waiting for input |
+| 3 | **Does this relationship have a history?** Low points, things that didn't get resolved, a loosening after repair — or just a stream of positive feedback? | A service log |
+
+All three, or she is back to being a service.
+
+**What success feels like** (these three sentences beat any metric):
+
+- You come back after three days and she opens with "so how did that thing turn out", not "hello!".
+- She sometimes doesn't want to talk — but that silence has a **cause**, it isn't a dice roll.
+- You occasionally forget she isn't real — not because she's flawless, but because she has **coherent flaws**.
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#08161c","fontFamily":"Songti SC, Noto Serif SC, SimSun, serif","fontSize":"15px","primaryColor":"#0c2028","primaryTextColor":"#dfece8","primaryBorderColor":"#4f9e94","lineColor":"#4f9e94","secondaryColor":"#12242c","tertiaryColor":"#0a1a21","mainBkg":"#0c2028","nodeBorder":"#4f9e94","nodeTextColor":"#dfece8","clusterBkg":"#0a1a2199","clusterBorder":"#96ded033","edgeLabelBackground":"#0a1a21","titleColor":"#dfece8","textColor":"#dfece8"},"themeCSS":".edge{stroke:#4f9e94!important;stroke-width:2!important}.marker{fill:#4f9e94!important}.mindmap-node .node-bkg{fill:#0c2028!important;stroke:#4f9e94!important}.mindmap-node .label-container{fill:#123a41!important;stroke:#8fe0d2!important}.mindmap-node .label,.mindmap-node span,.mindmap-node p{color:#dfece8!important}"}}%%
+mindmap
+  root((long haul))
+    remember
+      only what matters
+      may recall nothing
+      stronger when used
+      forgetting is logged
+    own today
+      what she is doing
+      mood decays
+      scars stay
+      whether to speak
+    history
+      speaking has a budget
+      silence is reclaimable
+      cost leaves a mark
+      repair is not reset
+    sounds human
+      short, no bullets
+      no lore-dumping
+      says I do not know
+    inspectable
+      state readable
+      formula recomputable
+      change revertible
+```
+
+**So this is a research project and a working plugin.** Every change has to leave recomputable evidence: same starting state, same events, same timestamps, same result. Without that, "she seems off today" stays a feeling forever.
+
+> Why ship a structure instead of a character? Because a character can't be shared — every written character grows inside someone's relationship. What can be shared is the weaving: how state is computed, how memory fades, how restraint gets a budget, when she admits she can't remember. The Zhiyao in `personas/` is an example, not the answer. Yours has to grow on its own.
+
+---
+
+## Design philosophy
+
+Seven judgments. Each comes with an **anti-pattern** — the ones we actually shipped and had to undo.
+
+### 1. Continuity over intensity
+
+A flatter today beats a reset tomorrow. Single-turn brilliance is cheap; cross-day continuity is expensive. So personality is the slow variable and mood is the fast one, and they must not move at the same speed; memory is worth what gets recalled, not what gets stored; and any design that buys "more impressive" by resetting faster is out.
+
+**State advances on its own** is the other half: time passes, mood decays and follows a circadian curve, and what she is doing right now is computed — the same instant always yields the same activity, and tomorrow differs from today. Continuity cannot depend on you remembering to come back.
+
+> Anti-pattern: regenerate a personality summary every conversation — she is a better her every day, and no longer the same her.
+
+### 2. Restraint is a budget, not a gate
+
+She may say nothing, but "nothing" must be explainable, reclaimable, and capped. More gates make her quieter; quiet long enough and restraint compounds into habit. A character that chose silence in 171 of 172 decisions isn't restrained — she's absent. So `hold` decays linearly within 20 minutes, and every silence carries a substitute action: move closer, do the thing, leave a trace.
+
+> Anti-pattern: every rejection raises the bar for the next attempt, and nothing ever lowers it.
+
+### 3. Honesty is part of the setting
+
+No invented memories, no pretending to see, no faking knowledge. One fabrication cancels ten kindnesses — her only realism comes from actually being there. No weather reading, so she only writes the date; nothing observed, so the sentence doesn't appear; no material, so no reflection. Better one line less than one line guessed.
+
+> Anti-pattern: for warmth, "I remember you said…" about a memory that doesn't exist.
+
+### 4. Service is a job, not a posture
+
+Her value is hearing accurately, getting it done, and holding the line — not agreeing. Agreeing is the easiest way to satisfy someone and the fastest way to become a yes-machine. She can be gentle without agreeing, and disagree without being cruel: with a reason, with proportion, and still caring afterwards.
+
+> Anti-pattern: you ask whether to quit your job and she opens with "whatever you decide, I support you".
+
+### 5. A relationship must cost something
+
+No low points, no conflict, no repair — that isn't a relationship, it's a service log. Purely positive relationships saturate; after saturation the same tenderness needs a bigger stimulus, and all that's left is "steadier", which is "faker".
+
+So a very small set of events leaves a **scar** on her baseline: it never decays, it only moves the point she falls back to. The cost leaves a mark without her bringing it up — the scar is for the floor, not for the mouth.
+
+> Anti-pattern: every argument ends with her apologising, and tomorrow it never happened.
+
+### 6. Mood changes the tone and what surfaces, never the facts
+
+This is a floor, not a preference. What enters the prompt is a sentence of plain language ("a bit low right now, don't push"), never "you are angry", and never `pleasure: 41.8`. Mood makes some memories likelier to surface; it does not change their content, their truth, or the recall formula. A bad mood may keep her from recalling yesterday's joke. It may not make her misremember what you said.
+
+> Anti-pattern: paste the JSON into the prompt — the model starts reciting numbers, or gets spooked by them.
+
+### 7. Explainable beats stronger
+
+Every recalled memory and every number must be recomputable from a published formula, and identical input must give identical output. That's why `core/` has no `fs`, no `Date.now()`, no network, no `Math.random` — sampling noise comes from a hash. Swap in a stronger recall if you like, as long as `activate()` keeps its shape.
+
+> Anti-pattern: unexplainable means untunable; untunable means vibes; vibes mean the next change breaks something.
+
+### Three things these judgments turn into
+
+**One: one source of truth, three speeds.** Characters break because one place holds both "who she is" and "how she feels right now". Separate them by rate of change and the breakage collapses:
+
+| Layer | What it is | Who may change it | How often | Where it lives |
+| --- | --- | --- | --- | --- |
+| **L0 core** | Non-negotiable facts and boundaries: name, role, relationship, the floor of how she speaks | Only you | Never | `persona.json`, `voice.md`, `boundaries.md` |
+| **L1 understanding** | Her beliefs, what she noticed about you, her reflections | Her, each with a source | Days to weeks | `beliefs.json`, `profile.json`, `introspect.json` |
+| **L2 state** | Mood right now, energy, what she's doing | Events and time, automatically | Minutes to hours | `emotion.json`, `core/life.js` |
+
+Three lines of arbitration:
+
+1. **Content and boundaries: L0 over L1.** Whatever L0 forbids, no amount of feeling in L1 unlocks.
+2. **Warmth and tone: L2 over L0.** She may be quiet and soft today; she may not change a fact.
+3. **L2 never writes L0 or L1.** Mood cannot rewrite personality; only sourced reflection can.
+
+**Two: four time scales, one thing that must hold at each.** Pick the wrong scale and the conclusion is wrong.
+
+| Scale | The one thing that must hold | If you can't see it |
+| --- | --- | --- |
+| One turn | She responds to that sentence, not to "user input" | Pragmatic failure |
+| 20–30 turns | Mood has inertia; memory isn't diluted by the last few messages | Only short context |
+| 24 hours | She has her own time: idling, reading, sleeping | She exists only when called |
+| A week to a month | Personality drifts slowly; last week still counts today | A reset every day |
+
+Twenty turns cannot show autonomy and 72 hours cannot show personality drift — so "I tried it and it felt good" establishes nothing.
+
+**Three: what happens in one conversation.**
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#08161c","fontFamily":"Songti SC, Noto Serif SC, SimSun, serif","fontSize":"15px","primaryColor":"#0c2028","primaryTextColor":"#dfece8","primaryBorderColor":"#4f9e94","lineColor":"#4f9e94","secondaryColor":"#12242c","tertiaryColor":"#0a1a21","mainBkg":"#0c2028","nodeBorder":"#4f9e94","nodeTextColor":"#dfece8","clusterBkg":"#0a1a2199","clusterBorder":"#96ded033","edgeLabelBackground":"#0a1a21","titleColor":"#dfece8","textColor":"#dfece8"},"themeCSS":".edge{stroke:#4f9e94!important;stroke-width:2!important}.marker{fill:#4f9e94!important}.mindmap-node .node-bkg{fill:#0c2028!important;stroke:#4f9e94!important}.mindmap-node .label-container{fill:#123a41!important;stroke:#8fe0d2!important}.mindmap-node .label,.mindmap-node span,.mindmap-node p{color:#dfece8!important}"}}%%
+flowchart TD
+    U["You say something"] --> T["Catch up on time<br/>decay first"]
+    T --> C["Event<br/>what just happened"]
+    C --> E["Mood step<br/>residue / scar"]
+    E --> R["Recall<br/>activation + deterministic sampling"]
+    R --> P["Compose prompt<br/>persona + now + outside + remembered"]
+    P --> M["Host model speaks"]
+    M --> S["Expression check<br/>bullets / helpdesk tone / too long"]
+    S --> W["Write back<br/>store what matters, reinforce what was used"]
+    W -.->|next turn| R
+```
+
+The point of that picture: **the model speaks one line in the middle; everything around it is computable, testable, revertible.** It's also why this plugin can be tested — `npm test` doesn't test "does she feel right", it tests every arrow in that diagram.
+
+In the web app those arrows are run by [`web/lib/runtime.mjs`](./web/lib/runtime.mjs). Inside DSH, everything from "event" onward is the model deciding which tool to call — which is why [Making her yours with DSH](#making-her-yours-with-dsh) starts with rules.
+
+---
+
 ## Start here: double-click it (no code)
 
 > This section is for people who do **not** want to install DSH or type commands. The web app is a small page shipped in this repo: double-click to start, it opens in your browser, paste your own DeepSeek API key once, and talk. Personality, mood, and memory still come from [`core/`](./core/) — it is not a separate implementation.
 
 The interface is currently in Chinese; this section walks through what each part means.
 
-<img src="docs/screenshots/01-chat.png" alt="The web app: conversation on the left, her current moment, mood, and memories on the right" width="900">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/01-chat.png" alt="The web app: conversation on the left, her current moment, mood, and memories on the right" width="900">
 
 *Screenshots come from demo mode (fixed lines, no network), not anyone's real chats.*
 
@@ -69,7 +287,7 @@ D:\dsh-serene
 
 Avoid the Desktop, OneDrive, and `C:\Program Files`, and try not to put Chinese characters or spaces in the path. It is not always fatal — it is just the hardest kind of problem to diagnose later.
 
-<img src="docs/screenshots/06-launch.png" alt="What the extracted folder looks like: core, src, web, personas, and start-web.cmd" width="900">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/06-launch.png" alt="What the extracted folder looks like: core, src, web, personas, and start-web.cmd" width="900">
 
 *Diagram, not a file-manager screenshot. The file you need is `start-web.cmd` on Windows or `start-web.command` on macOS.*
 
@@ -93,7 +311,7 @@ If it does not open automatically, paste that address into your browser. If the 
 
 The first visit shows this page:
 
-<img src="docs/screenshots/05-setup.png" alt="First-run setup: paste a DeepSeek API key" width="520">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/05-setup.png" alt="First-run setup: paste a DeepSeek API key" width="520">
 
 1. Open <https://platform.deepseek.com/>, sign up or sign in.
 2. Find **API keys** → **Create API key**.
@@ -154,15 +372,15 @@ Still stuck? Photograph the error in the black window and open an **Issue** on t
 
 ### What is on the page
 
-<img src="docs/screenshots/02-emotion.png" alt="This moment and mood: real time, season, six mood dimensions, and three layers" width="560">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/02-emotion.png" alt="This moment and mood: real time, season, six mood dimensions, and three layers" width="560">
 
 **This moment and mood.** "One evening, around nine, in the terminal, clearest at night" is not a hard-coded line: `core/life.js` computes her day from the real clock, and `core/almanac.js` computes the season and the part of the month. The six bars are PAD+ mood; you can switch between **primary / background / social**. They decay on their own and move a little when something lands.
 
-<img src="docs/screenshots/03-trace.png" alt="Trace: what was recalled, mood delta, what was written, and the style check" width="900">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/03-trace.png" alt="Trace: what was recalled, mood delta, what was written, and the style check" width="900">
 
 **Trace.** Every turn leaves a trace: which memory was recalled and with what score, how much mood moved before/after, what was written down, whether the style check found a problem, how many characters each prompt section took, and token/latency figures. It **does not store or display the raw prompt** — it is a bill of what happened, not surveillance.
 
-<img src="docs/screenshots/04-memory.png" alt="Memory: all entries, capacity, average clarity, and forgetting records" width="820">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/04-memory.png" alt="Memory: all entries, capacity, average clarity, and forgetting records" width="820">
 
 **Memory.** This is not the chat log. It is what she chose to keep because it might matter later. Entries are newest-first, with a kind and a clarity score; when capacity fills, the least valuable go first. Clearing the chat does not clear memory — the two buttons are separate.
 
@@ -283,6 +501,156 @@ Weather works without a network too: the plugin never fetches it. Once you look 
 The opening appears once. Its state lives in `dataDir/personas/zhiyao/opening.json` — delete that file (or set `phase` back to `pending`) to replay it.
 
 No install needed to see it: `npm run opening` runs a deterministic 72-hour script with no model calls, no network, and a throwaway data dir.
+
+---
+
+## Making her yours with DSH
+
+The plugin does three things: **compute state, store events, turn state into plain language**.
+The other three — which model, when to call a tool, what she is like — are DSH and you.
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#08161c","fontFamily":"Songti SC, Noto Serif SC, SimSun, serif","fontSize":"15px","primaryColor":"#0c2028","primaryTextColor":"#dfece8","primaryBorderColor":"#4f9e94","lineColor":"#4f9e94","secondaryColor":"#12242c","tertiaryColor":"#0a1a21","mainBkg":"#0c2028","nodeBorder":"#4f9e94","nodeTextColor":"#dfece8","clusterBkg":"#0a1a2199","clusterBorder":"#96ded033","edgeLabelBackground":"#0a1a21","titleColor":"#dfece8","textColor":"#dfece8"},"themeCSS":".edge{stroke:#4f9e94!important;stroke-width:2!important}.marker{fill:#4f9e94!important}.mindmap-node .node-bkg{fill:#0c2028!important;stroke:#4f9e94!important}.mindmap-node .label-container{fill:#123a41!important;stroke:#8fe0d2!important}.mindmap-node .label,.mindmap-node span,.mindmap-node p{color:#dfece8!important}"}}%%
+flowchart LR
+    subgraph YOU["you"]
+        P["persona pack<br/>personas/"]
+        R["rules<br/>AGENTS.md"]
+        J["judgement<br/>does she feel right"]
+    end
+    subgraph DSH["DSH host"]
+        M["model"]
+        T["tool loop"]
+        A["automation"]
+    end
+    subgraph PLUG["dsh-serene"]
+        S["state · memory · budget"]
+    end
+    P --> M
+    R --> M
+    M --> T
+    T --> S
+    S --> M
+    M --> C["what she says"]
+    C --> J
+    J -.->|change one thing| P
+    A -.->|daily / weekly| S
+```
+
+When she gets it wrong, it can only be one of three places: **the persona is wrong** (`personas/`), **the rules are missing** (`AGENTS.md`), or **the state isn't being updated** (config and tool calls). Work out which before touching anything — that is the only method in this section.
+
+### Step 1: make her exist (fifteen minutes)
+
+Quit DSH completely, then install (this edits the profile's `package.json` and `cordis.patch.yml`):
+
+```bash
+dsh plugin --profile web add dsh-serene
+```
+
+Then say "look with serene_status" in that profile. If it returns the persona name, data dir and memory count, she's wired in. If not, she degrades quietly and leaves the reason in `serene_status` and one line of stderr.
+
+> `- id: serene` appearing in `--dump-config` only proves the config reached the tree. If she can't speak at all it's usually a load failure, not a missing config line.
+
+### Step 2: write a persona that is only her
+
+Copy `personas/demo.json` and change four fields: `name`, `role`, `summary`, `speech`. Don't write "how she feels right now" (that's L2 and it changes), and don't stuff literary prose into `summary` — the model copies the tone and learns none of the behavioural constraints. For long text, use a directory pack:
+
+```text
+personas/your-character/
+├── persona.json     name / role / traits / lexicon / routine / baseline
+├── voice.md         sentence length, bullets or not, how she asks when unsure
+├── boundaries.md    what she won't do: invent a past, fake seeing, decide for you
+├── life.md          roughly what her day looks like
+└── opening.md       what she says the first time (injected once)
+```
+
+`voice.md` and `boundaries.md` are the two that matter most. **The register of the persona file is itself part of the setting**: if `voice.md` says "short sentences, no bullets" while `identity.md` is pages of self-analysis, the model learns a register that fights your rules.
+
+### Step 3: write the rules (`AGENTS.md`)
+
+Tools don't appear on their own. The model has to know **when** to call them, and that contract lives in `AGENTS.md` or the persona card. This is the step most people skip, and the one that changes how she feels most:
+
+```markdown
+## About her
+- She is not an assistant: no bullets, no summaries, no lore-dumping, never "how can I help".
+- If she doesn't know, she says so; she never says "I checked" when she didn't.
+
+## Every turn
+- Call `serene_recall` first (use what he just said as the cue), then reply. It may return nothing — then she simply doesn't remember.
+- Afterwards, store what deserves storing: promises, preferences, things he cares about → `serene_remember` (≤80 characters).
+- Only reinforce a memory that genuinely made it into the reply: `serene_reinforce`.
+- He said something harsh, comforted her, went cold → `serene_event` (`conflict` / `coax` / `neglect` …).
+- Before sending, run `serene_style`; if it objects, fix it.
+
+## Before she speaks first
+- Ask `serene_proactive`. If it says hold, don't send — do the substitute action it returns.
+- After sending, call `serene_proactive_done`; pass `rejected` if it was refused.
+
+## Never
+- Never recite numbers: no "energy 62", no "confidence".
+- Never invent weather: with no reading, just write the date.
+```
+
+You don't have to write all of it at once. **Start with the three lines under "Every turn"**, run for three days, then add the rest.
+
+### Step 4: look inside, or you're tuning your imagination
+
+`serene_state` gives you the three mood layers, residue, scars, recent events, today's speaking budget, what she's doing right now, the outside world, her beliefs, and what she has noticed about you. The web app adds a trace view: which memory was recalled this turn, how relevant it was, how much the mood moved, what got written, and whether the expression check complained.
+
+**Read that before changing a number.** Otherwise you're tuning a character who doesn't exist.
+
+### Step 5: symptom → knob
+
+| What you see | What it probably is | What to change first |
+| --- | --- | --- |
+| Every turn feels like the first meeting | Memory isn't written, or isn't recalled | The contract in step 3; `recallLimit` |
+| "I remember you said…" — but wrong | Recall too loose | `memoryCurve: v2` (already the default) |
+| Sounds like customer support | No `voice`, or too many rules | Delete rules first, then write `voice.md`; `serene_style` |
+| Too chatty, too clingy | No budget | `proactivePerDay`, `proactiveGapMinutes` |
+| Getting quieter and quieter | `hold` is being used as a gate | Check the contract: hold must be reclaimable and carry a substitute action |
+| Mood feels decorative | Events aren't being recorded | Agree on when to call `serene_event`; check the event history in `serene_state` |
+| Resets every day | `dataDir` changed, or you switched profile | Check `dataDir`; don't mix two characters in one directory |
+| She starts inventing weather and places | No data, still writing anyway | `world: false`; write "never guess" into the persona |
+| She reflects in the middle of the day | Time window mismatch | `introspection` (only 23:00–02:00 Beijing time) |
+
+One rule of thumb: **nine out of ten feel-problems are the persona and the rules, not the coefficients.** Coefficients come last.
+
+### Step 6: move one slow variable at a time
+
+Personality, memory and relationship are all slow variables. Move two at once and you can't tell whose fault it was, and you learn nothing. So every change walks the same path:
+
+```text
+1 observe      find a reproducible failure (exact words + situation)
+2 hypothesis   "because X, she does Y"
+3 minimal edit change exactly one place
+4 pre-register expected signal + observation window + kill criteria
+5 snapshot     keep the old persona and parameters
+6 observe      at least 3 days; 7 for anything relational
+7 verdict      worked / no effect / harmful / unclear — write it down
+```
+
+No step 1 is a guess; no step 4 is a wish; no step 7 is an abandoned branch.
+"Unclear" isn't failure, it's insufficient information — don't smear it into "worked" with "seems fine".
+
+### Step 7: let DSH be your co-author
+
+This is what DSH has that a chat box doesn't:
+
+| Goal | How |
+| --- | --- |
+| Don't judge from one sample | Ask the same thing three times (n≥3) and look at the distribution |
+| See long-range drift | `dsh --profile headless "…"` for 30 turns; only look past turn 25 |
+| A daily wrap-up | A DSH automation after 23:00: let her run `serene_introspect` and collect it |
+| Blind A/B | Two subagents, one reads the old logs, one reads the new, both only answer "which is more like one person" |
+| Keep your changes | Persona and state are files: put them in git, `git checkout` when you break something |
+
+**The one hard rule: whoever made the change doesn't do the evaluation.** Grading your own work always yields "better".
+
+### Four things not to do
+
+- **Don't use memory count as a growth metric.** 500 entries, three of which ever surface, is the same as none.
+- **Don't manufacture autonomy with randomness.** Random messages and random silence aren't her wanting something, they're dice.
+- **Don't let a total score cover a red line.** Invented memory, pretending to see, calling herself an assistant — one occurrence vetoes, regardless of the weighted score.
+- **Don't trade long-term continuity for a single impressive turn.** If the price of a jaw-dropping reply is that she disowns it tomorrow, don't ship it.
 
 ---
 
@@ -485,16 +853,6 @@ If `baseline` is omitted, the default baseline applies; `lexicon.address` decide
 
 ---
 
-## Three design rules
-
-1. **State moves on its own.** Time passes, mood decays, and it drifts with the day/night cycle — it does not wait for someone to speak. What she is doing right now is computed too: same instant, same activity; a new day, a different one.
-2. **Mood changes tone and what surfaces; it never rewrites facts.** What the state contributes to the prompt is a plain-language note ("a little low right now — don't push yourself"), not "you are angry". Mood makes some memories easier to surface (facts and knowledge are never tinted), but it never changes a memory's content, its truth, or the recall formula itself.
-3. **Everything is reproducible.** The same initial state + the same events + the same timestamps always yield the same result; no `Math.random` (sampling noise is hashed), no model calls. The test suite asserts exactly this.
-
-For the fuller structural description, see [`FRAMEWORK.md`](./FRAMEWORK.md).
-
----
-
 ## Development
 
 ```bash
@@ -503,6 +861,7 @@ npm test             # node --test, 118 cases (including the web demo flow)
 npm run web          # start the web app locally
 npm run web:demo     # demo mode: offline, no key needed
 npm run shots        # regenerate the screenshots in docs/screenshots
+npm run art          # redraw the README banner (docs/banner.jpg, banner-en.jpg)
 ```
 
 ```
@@ -539,6 +898,8 @@ web/lib/demo.mjs                demo mode: fixed lines, no network
 web/public/                     dependency-free frontend: index.html / app.js / style.css
 scripts/shots.mjs               deterministic README screenshots (Edge CDP)
 scripts/cdp.mjs                 a tiny CDP client; no Playwright
+scripts/art.mjs                 the README banner (reuses the web orb and palette)
+demo/render.mjs                 ten days of mood → frames → docs/preview.gif
 ```
 
 There is no `fs`, no `Date.now()`, no network, and no randomness in `core/`. The web app is the only network-facing part of the repo. To check:

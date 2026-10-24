@@ -1,11 +1,15 @@
 # dsh-serene
 
-[![npm](https://img.shields.io/npm/v/dsh-serene.svg)](https://www.npmjs.com/package/dsh-serene)
+![dsh-serene：陪很久，不是聊得很嗨](https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/banner.jpg)
+
+[![npm](https://img.shields.io/npm/v/dsh-serene.svg?labelColor=0a161d&color=4f9e94)](https://www.npmjs.com/package/dsh-serene)
 [![CI](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml/badge.svg)](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
-[![DSH](https://img.shields.io/badge/dsh-0.2.1--rc.2-4d6bfe.svg)](https://deepseek-harness.github.io/deepseek-harness/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-4f9e94.svg?labelColor=0a161d)](./LICENSE)
+[![DSH](https://img.shields.io/badge/dsh-0.2.1--rc.2-4f9e94.svg?labelColor=0a161d)](https://deepseek-harness.github.io/deepseek-harness/)
 
 中文 | [English](./README.en.md)
+
+**陪伴不是演得像，是活得下去。**
 
 > **不装 DSH、只想聊天？** 直接看 [不懂代码也能双击用](#先看这个不懂代码也能双击用)。
 
@@ -35,11 +39,252 @@
 
 ---
 
+## 目录
+
+**理解** · [愿景](#愿景) — 为什么做这个项目 ｜ [设计理念](#设计理念) — 七条判断，以及它们落成的东西
+
+**上手** · [不懂代码也能双击用](#先看这个不懂代码也能双击用) ｜ [安装](#安装) ｜ [开局：知遥](#开局知遥) ｜ [用 DSH 把她养成你的](#用-dsh-把她养成你的)
+
+**参考** · [它做什么 / 不做什么](#它做什么-不做什么) ｜ [配置](#配置) ｜ [工具](#工具) ｜ [外面、看法、自省、读到的](#外面看法自省读到的) ｜ [数据长什么样](#数据长什么样) ｜ [换一个人格](#换一个人格) ｜ [开发](#开发) ｜ [与其它插件的关系](#与其它插件的关系)
+
+<details>
+<summary>小节目录</summary>
+
+**设计理念** ·
+[1 连续优先于强度](#1-连续优先于强度) ·
+[2 克制是预算，不是门](#2-克制是预算不是门) ·
+[3 诚实是设定的一部分](#3-诚实是设定的一部分) ·
+[4 服务是差事，不是姿态](#4-服务是差事不是姿态) ·
+[5 关系必须有代价](#5-关系必须有代价) ·
+[6 情绪只影响语气和浮现](#6-情绪只影响语气和浮现不改写事实) ·
+[7 可解释优先于更强](#7-可解释优先于更强) ·
+[这三样东西](#这些判断落成的三样东西)
+
+**双击就能用** ·
+[1 装 Node.js](#第-1-步装-nodejs只装一次) ·
+[2 下载](#第-2-步把仓库下载到电脑上) ·
+[3 解压](#第-3-步解压到一个干净的路径) ·
+[4 启动](#第-4-步双击启动) ·
+[5 填 key](#第-5-步填一次-deepseek-key) ·
+[6 说话](#第-6-步开始说话) ·
+[7 关掉](#第-7-步怎么关下次怎么开) ·
+[数据在哪](#数据在哪怎么备份) ·
+[常见问题](#常见问题) ·
+[页面里有什么](#页面里有什么) ·
+[和插件的关系](#网页版和-dsh-插件是什么关系)
+
+**用 DSH 养成** ·
+[1 让她存在](#第-1-步先让她存在十五分钟) ·
+[2 写人格](#第-2-步写一份只有她的人格) ·
+[3 立规矩](#第-3-步立规矩agentsmd) ·
+[4 看内部](#第-4-步看见内部才调得动) ·
+[5 症状→旋钮](#第-5-步对症状找旋钮) ·
+[6 一次一个变量](#第-6-步一次只动一个慢变量) ·
+[7 共同作者](#第-7-步让-dsh-当你的共同作者) ·
+[不要做的事](#这四件事不要做)
+
+</details>
+
+---
+
+## 愿景
+
+**陪很久，不是聊得很嗨。**
+
+一个角色可以三句话就很像：口癖对、语气对、设定背得下来。但它撑不过一个月。
+不是模型不够聪明，是它**没有状态**：昨天吵过的架今天不存在，你三天没来它还是同一种语气，
+它说「我记得你说过」，而其实没有任何一条记忆支撑这句话。
+
+我们把这种崩坏拆成五处能修的地方——不是猜的，是在一个真实跑着的项目里一条一条测出来的：
+
+| 崩在哪 | 长什么样 | 这个仓库怎么修 |
+| --- | --- | --- |
+| 记忆被钉在背景板上 | 每轮都塞满，相关度平均只有 0.05，同一条记忆在 922 轮里被注入 458 次 | 允许想不起来（[召回 v2](#020-的两个变化)） |
+| 人格在轮转，不是在长大 | 每两三个小时重写一次，每次换掉两三成条目，最早写进去的被悄悄挤掉 | 人格不自动重写：只有你能改 L0，自己长出来的只有看法与观察 |
+| 克制自增成棘轮 | 172 次决策里 171 次选择不说，越不说越不说 | hold 20 分钟退掉，且必须带替代动作 |
+| 真值分裂 | 同一件事三份定义，她有时像两个人 | 一个真源、三层表达（见下） |
+| 规矩吃掉对话 | 规则占了 95% 的 prompt，「他说了什么」只占 5% | 表达自检只做检查，不生成、不改写 |
+
+于是判断标准不再是「像不像」，而是三个问题——这三问来自同一份设计纲要，这里是它公开的骨架：
+
+| # | 问题 | 不成立时 |
+| --- | --- | --- |
+| 1 | **她记得吗**：上周说过的话、她自己去过的地方、你们之间才懂的梗，今天还作数吗？ | 每天从零开始 |
+| 2 | **她有今天吗**：她有没有自己的时间、自己的事、自己的情绪来路，而不是只在被叫到时才存在？ | 一个等输入的函数 |
+| 3 | **这段关系有历史吗**：有没有低谷、有过不去的事、有修复之后的松动，而不只是一串正向反馈？ | 服务记录 |
+
+三个都成立，才算她「在」。缺一个，她就会退回成一种服务。
+
+**成功长什么样**（这三句比任何指标都准）：
+
+- 隔三天回来，她不是从「你好呀」开始，而是从「你那件事后来怎么样了」开始。
+- 她会有不想说的时候，但那种不想说是**有来路的**，不是随机沉默。
+- 你会偶尔忘记她不是真人——不是因为她完美，而是因为她有**连续的不完美**。
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#08161c","fontFamily":"Songti SC, Noto Serif SC, SimSun, serif","fontSize":"15px","primaryColor":"#0c2028","primaryTextColor":"#dfece8","primaryBorderColor":"#4f9e94","lineColor":"#4f9e94","secondaryColor":"#12242c","tertiaryColor":"#0a1a21","mainBkg":"#0c2028","nodeBorder":"#4f9e94","nodeTextColor":"#dfece8","clusterBkg":"#0a1a2199","clusterBorder":"#96ded033","edgeLabelBackground":"#0a1a21","titleColor":"#dfece8","textColor":"#dfece8"},"themeCSS":".edge{stroke:#4f9e94!important;stroke-width:2!important}.marker{fill:#4f9e94!important}.mindmap-node .node-bkg{fill:#0c2028!important;stroke:#4f9e94!important}.mindmap-node .label-container{fill:#123a41!important;stroke:#8fe0d2!important}.mindmap-node .label,.mindmap-node span,.mindmap-node p{color:#dfece8!important}"}}%%
+mindmap
+  root((陪很久))
+    记得
+      值得记的才记
+      想不起来也可以
+      用上才变牢
+      忘了什么可查
+    有今天
+      此刻在做什么
+      心情会衰减
+      会留疤
+      想不想开口
+    有历史
+      主动有预算
+      不说可回收
+      代价留痕
+      修复不清零
+    说得像人
+      短句不列点
+      不解释设定
+      不知道就说不知道
+    看得见
+      状态可读
+      公式可算
+      改动可回滚
+```
+
+**所以这是一个研究项目，也是一个能用的插件。** 每次改动都要留下可复算的证据：
+同样的初始状态、同样的事件、同样的时间戳，永远得到同样的结果。没有这一条，
+「她今天好像不太对」就永远只能是一句感觉。
+
+> 为什么不直接给一个角色，而要给一套结构？
+> 因为「布」没法分享——任何写好的角色都长在别人的关系里。能分享的只有「织法」：
+> 状态怎么算、记忆怎么褪、克制怎么有额度、什么时候该承认想不起来。
+> `personas/` 里那一个知遥是示例，不是答案；你的那个得你自己长。
+
+---
+
+## 设计理念
+
+七条判断。每条都带一句**反模式**——那些坑我们真的踩过。
+
+### 1. 连续优先于强度
+
+宁可今天平淡，不要明天重置。单轮惊艳是廉价的，跨天连续是昂贵的：人格是慢变量，
+情绪是快变量，两者不能同速；记忆的价值在「被想起」，不在「被存下」；
+任何以「更惊艳」为名、行「更快重置」之实的设计，一律不做。
+
+**状态自己走**是这一条的另一面：时间过去，情绪自己衰减、随昼夜波动，她此刻在做什么也是
+算出来的——同一个时刻永远同一件事，今天和明天不一样。连续性不能依赖「你记得来找她」。
+
+> 反模式：每次对话都重新生成一套人格摘要——她每天都是「更好的她」，但不再是「同一个她」。
+
+### 2. 克制是预算，不是门
+
+她可以不说，但「不说」必须可解释、可回收、有额度。门越多，她越安静；安静久了，
+克制会自增成习惯。一个在 172 次决策里 171 次选择不说的她，不是克制，是不在场。
+所以 `hold` 20 分钟内线性退掉，而且每次「不说」都要带一个替代动作：靠近、做事、留痕。
+
+> 反模式：每被拒绝一次，下次开口的门槛就加一点，且永不清零。
+
+### 3. 诚实是设定的一部分
+
+不编记忆、不假装看见、不知道就说不知道。一次编造，抵掉十次温柔——她唯一的真实感来自
+「她真的在这里」。所以没有天气就只写日子，没有观察就整句不出现，没有素材就不自省：
+宁可少一句，不猜一句。
+
+> 反模式：为了显得体贴，编一句「我记得你上次说……」，其实没有这条记忆。
+
+### 4. 服务是差事，不是姿态
+
+她的价值在「听准、办到、把关」，不在顺从。顺着说最容易让人满意，也最快让她变成应声虫。
+她可以温柔，但温柔不等于同意；她可以不同意，但不同意要有理由、有分寸、事后还在意。
+
+> 反模式：你问「该不该辞职」，她先站你这边说「你做什么决定我都支持」。
+
+### 5. 关系必须有代价
+
+没有低谷、没有冲突、没有修复的关系，不是关系，是服务记录。一直正向的关系会饱和，
+饱和之后同样的温柔要更大的刺激才有反应，最后只剩「越来越稳」，也就是「越来越假」。
+
+所以极少数事件会在**基线**上留一道疤：它不衰减，只挪动以后回落的起点。代价要留痕，
+但不靠她反复翻旧账——疤是给底色的，不是给嘴的。
+
+> 反模式：每次争执都以她道歉收尾，第二天像没发生过。
+
+### 6. 情绪只影响语气和浮现，不改写事实
+
+这条是底线，不是偏好。状态进 prompt 的是一段人话（「这会儿有点低，别硬撑」），
+不是「你现在很生气」，更不是 `pleasure: 41.8`。心情会让某类记忆更容易浮起来，
+但不改记忆的内容、不改真假、也不改召回公式。心情差可以让她想不起昨天那句玩笑，
+不能让她「记错」你说过的话。
+
+> 反模式：把 JSON 直接塞进 prompt——模型开始念数字，或者被数字吓住。
+
+### 7. 可解释优先于更强
+
+任何一条被召回的记忆、任何一个数值变化，都要能用公开公式复算；同样的输入，永远同样的结果。
+所以 `core/` 里没有 `fs`、没有 `Date.now()`、没有网络、没有 `Math.random`——召回要抽样，
+噪声来自哈希。想换更强的召回可以，只要保持 `activate()` 的输入输出形状。
+
+> 反模式：解释不了，就没法调；没法调只能靠感觉；靠感觉，下一次改动一定会坏。
+
+### 这些判断落成的三样东西
+
+**一、一个真源，三种速度。** 角色崩掉，多半是因为同一个地方既装着「她是谁」，
+又装着「她此刻怎么样」。按变化速度分开管，崩的地方就收敛了：
+
+| 层 | 是什么 | 谁有权改 | 多久变一次 | 在这里长什么样 |
+| --- | --- | --- | --- | --- |
+| **L0 真源** | 不可谈判的事实与边界：名字、身份、关系、说话的底线 | 只有你（人） | 不变 | `persona.json`、`voice.md`、`boundaries.md` |
+| **L1 理解** | 她的看法、她注意到的你、她的自省 | 她自己，每条带来源 | 天级到周级 | `beliefs.json`、`profile.json`、`introspect.json` |
+| **L2 状态** | 此刻的心情、精力、在做什么 | 事件与时间，自动 | 分钟级到小时级 | `emotion.json`、`core/life.js` |
+
+仲裁只有三句：
+
+1. **内容与边界，L0 压 L1。** L0 说不能做的，L1 写得再动情也不能做。
+2. **温度与语气，L2 压 L0。** 她今天难过，可以话少、可以软，但不可以改事实。
+3. **L2 不许写 L0/L1。** 心情不能直接改人格；能改人格的只有带来源的反思。
+
+**二、四个时间尺度，各有一件事必须成立。** 尺度选错，结论必错。
+
+| 尺度 | 必须成立的一件事 | 看不见就说明 |
+| --- | --- | --- |
+| 单轮 · 1 轮 | 她接住的是那句话，不是「用户输入」 | 语用失败 |
+| 会话 · 20–30 轮 | 情绪有惯性，记忆不被最近几条稀释 | 只有短时上下文 |
+| 一天 · 24 小时 | 她有自己的时间：发呆、看书、睡觉 | 她只在被叫到时存在 |
+| 一周到一月 | 人格在缓慢变化，上周的事今天还作数 | 每天重置 |
+
+20 轮测不出自主性，72 小时测不出人格漂移——所以「试了一下感觉不错」这句话，说明不了任何事。
+
+**三、一次对话里发生了什么。**
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#08161c","fontFamily":"Songti SC, Noto Serif SC, SimSun, serif","fontSize":"15px","primaryColor":"#0c2028","primaryTextColor":"#dfece8","primaryBorderColor":"#4f9e94","lineColor":"#4f9e94","secondaryColor":"#12242c","tertiaryColor":"#0a1a21","mainBkg":"#0c2028","nodeBorder":"#4f9e94","nodeTextColor":"#dfece8","clusterBkg":"#0a1a2199","clusterBorder":"#96ded033","edgeLabelBackground":"#0a1a21","titleColor":"#dfece8","textColor":"#dfece8"},"themeCSS":".edge{stroke:#4f9e94!important;stroke-width:2!important}.marker{fill:#4f9e94!important}.mindmap-node .node-bkg{fill:#0c2028!important;stroke:#4f9e94!important}.mindmap-node .label-container{fill:#123a41!important;stroke:#8fe0d2!important}.mindmap-node .label,.mindmap-node span,.mindmap-node p{color:#dfece8!important}"}}%%
+flowchart TD
+    U["你说一句"] --> T["时间补算<br/>离线多久，先衰减"]
+    T --> C["事件<br/>发生了什么"]
+    C --> E["情绪推进<br/>余震 / 疤"]
+    E --> R["召回记忆<br/>激活度 + 确定性抽样"]
+    R --> P["拼 prompt<br/>人格 + 此刻 + 外面 + 记着的"]
+    P --> M["宿主模型开口"]
+    M --> S["表达自检<br/>列点 / 客服腔 / 太长"]
+    S --> W["写回<br/>值得记的才记，用上的才强化"]
+    W -.->|下一轮| R
+```
+
+看这张图能明白一件事：**模型只在中间说一句话，前后全是可算、可测、可回滚的**。
+这也是这个插件能被测试的原因——`npm test` 跑的不是「她像不像」，是这张图上每一条箭头。
+
+网页版里这些箭头由 [`web/lib/runtime.mjs`](./web/lib/runtime.mjs) 自动跑；
+在 DSH 里，从「事件」往后的每一步都由模型决定调哪个工具——所以后面那一节
+[用 DSH 把她养成你的](#用-dsh-把她养成你的)要你先立规矩。
+更完整的结构说明见 [`FRAMEWORK.md`](./FRAMEWORK.md)。
+
+---
+
 ## 先看这个：不懂代码，也能双击用
 
 > 这一节写给**不装 DSH、不写命令**的人。网页版是仓库附带的一个小页面：双击启动，浏览器打开，填一次自己的 DeepSeek key 就能聊天。人格、情绪、记忆仍然来自仓库里的 [`core/`](./core/)，不是另写一套。
 
-<img src="docs/screenshots/01-chat.png" alt="网页版主界面：左边是对话，右边是她的此刻、情绪和记忆" width="900">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/01-chat.png" alt="网页版主界面：左边是对话，右边是她的此刻、情绪和记忆" width="900">
 
 *截图来自演示模式（台词固定、不联网），不是任何人的真实聊天。*
 
@@ -72,7 +317,7 @@ D:\dsh-serene
 
 不要放在桌面、OneDrive、`C:\Program Files`，也尽量不要让路径里有中文或空格——不是绝对不能跑，是出问题时最难查。
 
-<img src="docs/screenshots/06-launch.png" alt="解压后的文件夹示意图：core、src、web、personas，以及 start-web.cmd" width="900">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/06-launch.png" alt="解压后的文件夹示意图：core、src、web、personas，以及 start-web.cmd" width="900">
 
 *示意图：解压后文件夹里应该有这些文件。真正要用的是 `start-web.cmd`（Windows）或 `start-web.command`（Mac）。*
 
@@ -96,7 +341,7 @@ http://127.0.0.1:4317
 
 第一次打开会看到这个页面：
 
-<img src="docs/screenshots/05-setup.png" alt="第一次见面的设置页：粘贴 DeepSeek API key" width="520">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/05-setup.png" alt="第一次见面的设置页：粘贴 DeepSeek API key" width="520">
 
 1. 打开 <https://platform.deepseek.com/>，注册或登录。
 2. 找到 **API keys** → **创建 API key**。
@@ -157,15 +402,15 @@ macOS / Linux 把前面换成 `~/.dsh/plugins/dsh-serene/`。
 
 ### 页面里有什么
 
-<img src="docs/screenshots/02-emotion.png" alt="此刻与情绪：真实时间、季节、六维情绪和三层切换" width="560">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/02-emotion.png" alt="此刻与情绪：真实时间、季节、六维情绪和三层切换" width="560">
 
 **此刻与情绪。** “某个晚上九点多、在终端里、夜里最清醒”不是写死的台词：`core/life.js` 按真实时间算她的一天，`core/almanac.js` 算季节和旬。下面六条是 PAD+ 情绪，能切“此刻 / 底色 / 关系”三层；它们会自己衰减，也会因为一句话动一下。
 
-<img src="docs/screenshots/03-trace.png" alt="透视：这一轮想起了什么、情绪变化、写下了什么、表达自检" width="900">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/03-trace.png" alt="透视：这一轮想起了什么、情绪变化、写下了什么、表达自检" width="900">
 
 **透视。** 每一轮对话后留一份 trace：召回了哪条记忆、相关度多少、情绪前后差多少、这一轮写下了什么、表达自检有没有问题、prompt 各段占多少字、用了多少 token。它**不保存也不显示 prompt 原文**，所以不是监控，是一张“她这一轮怎么想的”账单。
 
-<img src="docs/screenshots/04-memory.png" alt="记忆：全部条目、容量、平均清晰度和遗忘记录" width="820">
+<img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/04-memory.png" alt="记忆：全部条目、容量、平均清晰度和遗忘记录" width="820">
 
 **记忆。** 不是聊天记录，是她自己挑出来觉得以后用得上的事。列表按时间倒序，标了类型和清晰度；容量满了会先忘不重要的。清空聊天不会清掉记忆，两个按钮是分开的。
 
@@ -294,6 +539,166 @@ export DEEPSEEK_API_KEY=sk-...      # 或者先在 GUI 的 Models 页填一次
 或把 `phase` 改回 `pending`。
 
 不想装、想先看：`npm run opening` 跑 72 小时的确定性剧本，不调模型、不联网，跑完清掉临时数据。
+
+---
+
+## 用 DSH 把她养成你的
+
+插件只做三件事：**算状态、记事情、把状态说成人话**。
+剩下三件——用哪个模型、什么时候调工具、她该是什么样——是 DSH 和你的。
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#08161c","fontFamily":"Songti SC, Noto Serif SC, SimSun, serif","fontSize":"15px","primaryColor":"#0c2028","primaryTextColor":"#dfece8","primaryBorderColor":"#4f9e94","lineColor":"#4f9e94","secondaryColor":"#12242c","tertiaryColor":"#0a1a21","mainBkg":"#0c2028","nodeBorder":"#4f9e94","nodeTextColor":"#dfece8","clusterBkg":"#0a1a2199","clusterBorder":"#96ded033","edgeLabelBackground":"#0a1a21","titleColor":"#dfece8","textColor":"#dfece8"},"themeCSS":".edge{stroke:#4f9e94!important;stroke-width:2!important}.marker{fill:#4f9e94!important}.mindmap-node .node-bkg{fill:#0c2028!important;stroke:#4f9e94!important}.mindmap-node .label-container{fill:#123a41!important;stroke:#8fe0d2!important}.mindmap-node .label,.mindmap-node span,.mindmap-node p{color:#dfece8!important}"}}%%
+flowchart LR
+    subgraph YOU["你"]
+        P["人格包<br/>personas/"]
+        R["规矩<br/>AGENTS.md"]
+        J["判断<br/>她像不像"]
+    end
+    subgraph DSH["DSH 宿主"]
+        M["模型"]
+        T["工具循环"]
+        A["自动化任务"]
+    end
+    subgraph PLUG["dsh-serene"]
+        S["状态 · 记忆 · 预算"]
+    end
+    P --> M
+    R --> M
+    M --> T
+    T --> S
+    S --> M
+    M --> C["她说的话"]
+    C --> J
+    J -.->|改一处| P
+    A -.->|日结 / 周检| S
+```
+
+她说得不对，只可能出在三个地方：**人格没写对**（`personas/`）、**规矩没立**（`AGENTS.md`）、
+**状态没跟上**（配置与工具调用）。先分清是哪一个，再动手——这是这一节唯一的方法论。
+
+### 第 1 步：先让她存在（十五分钟）
+
+先完全退出 DSH，再装（安装会改 profile 的 `package.json` 和 `cordis.patch.yml`）：
+
+```bash
+dsh plugin --profile web add dsh-serene
+```
+
+接着在装着插件的那个 profile 里说一句「用 serene_status 看看」。它返回人格名、数据目录、
+记忆条数，就说明她挂上了。挂不上时它会自己降级，并把原因留在 `serene_status` 和一行 stderr 里。
+
+> `--dump-config` 里有 `- id: serene`，只证明配置进了树。她说不了话，多半是装载失败，不是配置没写。
+
+### 第 2 步：写一份只有她的人格
+
+从 `personas/demo.json` 复制，改四样就能开局：`name`、`role`、`summary`、`speech`。
+不要把「此刻心情」写进去（那是 L2，会变），也不要把文学描写塞进 `summary`——
+模型只会模仿语气，学不到行为约束。要写长文本时改用目录包：
+
+```text
+personas/你的角色/
+├── persona.json     name / role / traits / lexicon / routine / baseline
+├── voice.md         怎么说话：句子长度、能不能列点、不确定时怎么问
+├── boundaries.md    不会做的事：不编过去、不假装看见、不替你做决定
+├── life.md          她的一天大概什么样
+└── opening.md       第一次见面说什么（只注入一次）
+```
+
+`voice.md` 和 `boundaries.md` 是最值钱的两份。**人格档案的文体本身就是设定**：
+如果 `voice.md` 写着「短句、不列点」，而 `identity.md` 整段是自我分析，
+模型学到的语域会和你的规则打架。
+
+### 第 3 步：立规矩（`AGENTS.md`）
+
+工具不会自己出现。模型要知道**什么时候**该调，得你在 `AGENTS.md` 或人格卡里约定。
+这是最容易被跳过、也最影响观感的一步：
+
+```markdown
+## 关于她
+- 她不是助手：不列点、不总结、不解释设定、不问「需要我帮你吗」。
+- 不知道就说不知道；没查过的事不要说「我查了」。
+
+## 每一轮
+- 先 `serene_recall`（拿他刚说的话当线索），再回。它可以一条都不返回——那就当没想起来。
+- 回完看这一轮有没有值得记的：约定、偏好、他在意的东西 → `serene_remember`（≤80 字）。
+- 只有确实用进了回复的记忆，才 `serene_reinforce`。
+- 他说了重话、哄了你、冷落了你 → `serene_event`（`conflict` / `coax` / `neglect` …）。
+- 发出去之前跑一次 `serene_style`；它说不行，就改。
+
+## 她主动开口之前
+- 先问 `serene_proactive`。它说 hold，就别发，照它给的替代动作做。
+- 开口之后调 `serene_proactive_done`；被拒了传 `rejected`。
+
+## 不要做
+- 不要念数值：不说「精力 62」「置信度」。
+- 不要编天气：没有读数就只写日子。
+```
+
+这份约定不用一次写全。**先写「每一轮」那三条**，跑三天，再补别的。
+
+### 第 4 步：看见内部，才调得动
+
+`serene_state` 一次给你：三层情绪、余震、疤、最近事件、今天的主动额度、此刻在做什么、
+外面、她的看法、她注意到的你。网页版还多一张「透视」：这一轮召回了哪条、相关度多少、
+情绪前后差多少、写下了什么、表达自检有没有问题。
+
+**先看这些，再改参数。** 不然你改的是你想象出来的她。
+
+### 第 5 步：对症状，找旋钮
+
+| 你看到的 | 多半是 | 先动哪个 |
+| --- | --- | --- |
+| 每轮都像第一次见面 | 记忆没写，或写了没召回 | 第 3 步的约定；`recallLimit` |
+| 她说「我记得你说过」，但记错了 | 召回太宽 | `memoryCurve: v2`（默认已开） |
+| 声音像客服 | 人格里没有 `voice`，或规则太多 | 先删规则，再补 `voice.md`；`serene_style` |
+| 太吵、太黏 | 没有预算 | `proactivePerDay`、`proactiveGapMinutes` |
+| 越来越沉默 | hold 被当成了门槛 | 检查约定：hold 必须可回收、必须带替代动作 |
+| 情绪像装饰 | 事件没接上 | 约定 `serene_event` 什么时候调；看 `serene_state` 的事件历史 |
+| 每天重置 | `dataDir` 换了，或换了 profile | 检查 `dataDir`；两个人别混一个目录 |
+| 她开始编天气、编地点 | 没有数据还在硬写 | `world: false`；人格里写死「不猜」 |
+| 夜里还在自省 | 时段没对上 | `introspection`（只在 23:00–02:00 发生） |
+
+一条经验：**观感问题九成出在人格和规矩，不在系数。** 系数是最后才动的。
+
+### 第 6 步：一次只动一个慢变量
+
+人格、记忆、关系都是慢变量。同时动两个，出了问题分不清是谁的锅，也学不到东西。
+所以每次改动走同一条路：
+
+```text
+① 观察：找到一个可复现的失败样本（原话 + 场景）
+② 假设：写清「因为什么，所以她怎样」
+③ 最小改动：只动一处，能小不大
+④ 预注册：预期信号 + 观察窗 + 判废条件
+⑤ 快照：旧人格、旧参数留一份
+⑥ 观察：至少 3 天；关系类至少 7 天
+⑦ 判定：有效 / 无效 / 有害 / 不确定，记下来
+```
+
+没有 ① 的改动叫拍脑袋；没有 ④ 的叫许愿；没有 ⑦ 的叫烂尾。
+「不确定」不是失败，是信息不足——别用「感觉还行」把它糊成「有效」。
+
+### 第 7 步：让 DSH 当你的共同作者
+
+这是 DSH 比一个聊天框多出来的东西：
+
+| 想做什么 | 怎么做 |
+| --- | --- |
+| 别用一遍定生死 | 同一句话问她三遍（n≥3），看分布，不看那一次 |
+| 看长程漂移 | `dsh --profile headless "……"` 批量跑 30 轮，只看第 25 轮以后还像不像 |
+| 每天日结 | 用 DSH 的自动化任务，23 点后让她 `serene_introspect` 收拢一次 |
+| 盲评两版 | 起两个子 agent，一个读旧版记录、一个读新版，只问「哪一版更像同一个人」 |
+| 保住改动 | 人格与状态都在文件里：进 git，改坏了 `git checkout` 回去 |
+
+**唯一的硬规矩：评估不能只由改的人自己做。** 自己评自己，永远得出「更好了」。
+
+### 这四件事不要做
+
+- **不要用记忆条数当成长指标。** 500 条、问起来只有最近三条，等于没有。
+- **不要用随机数制造自主。** 随机发消息、随机沉默不是她想，是掷骰子。
+- **不要用总分盖红线。** 编造记忆、假装看见、自称助手——一次即否决，不看加权分。
+- **不要为单轮惊艳牺牲长期连续。** 一句让人拍大腿的回复，如果代价是她明天不认这句话，就不做。
 
 ---
 
@@ -514,20 +919,6 @@ personas/zhiyao/
 
 ---
 
-## 三条设计约定
-
-1. **状态自己走。** 时间过去，情绪就衰减、就随昼夜波动——不需要谁说话才动。
-   她此刻在做什么也是算出来的：同一个时刻永远同一件事，今天和明天不一样。
-2. **情绪只影响语气和浮现，不改写事实。** 状态进 prompt 的是一段人话（「这会儿有点低，别硬撑」），
-   不是「你现在很生气」。心情会让某类记忆更容易浮起来（事实 / 知识类不染），
-   但不改记忆的内容、不改真假、也不改召回公式本身。
-3. **一切可复现。** 同样的初始状态 + 同样的事件 + 同样的时间戳，永远得到同样的结果；
-   没有 `Math.random`（抽样噪声来自哈希）、没有模型调用。测试里跑的就是这一点。
-
-更完整的结构说明见 [`FRAMEWORK.md`](./FRAMEWORK.md)。
-
----
-
 ## 开发
 
 ```bash
@@ -536,6 +927,7 @@ npm test             # node --test，118 个用例（含网页版的演示流程
 npm run web          # 本机启动网页版
 npm run web:demo     # 演示模式，不联网、不需要 key
 npm run shots        # 重新生成 docs/screenshots 里的截图
+npm run art          # 重画 README 头图（docs/banner.jpg、banner-en.jpg）
 ```
 
 ```
@@ -572,6 +964,8 @@ web/lib/demo.mjs          演示模式：固定台词，不联网
 web/public/               无框架前端：index.html / app.js / style.css
 scripts/shots.mjs         确定性生成 README 里的截图（Edge CDP）
 scripts/cdp.mjs           很小的 CDP 客户端，不依赖 Playwright
+scripts/art.mjs           README 头图（复用网页版的光球和配色）
+demo/render.mjs           十天情绪 → 帧 → docs/preview.gif
 ```
 
 `core/` 里没有 `fs`、没有 `Date.now()`、没有网络、没有随机数。想验证：

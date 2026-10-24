@@ -35,18 +35,21 @@ const FFMPEG = process.env.FFMPEG_BIN ?? "ffmpeg";
 
 /* ───────────────────────────── 配色 ───────────────────────────── */
 
+// 和网页版同一套：web/public/style.css 里的 :root。
+// 深海底色 + 薄荷（她）+ 沙（此刻）+ 冷银（关系）+ 淡红（疤）。
 const C = {
-  bg: "#0d1117",
-  card: "#11161d",
-  grid: "#1f2630",
-  border: "#232b36",
-  text: "#e6edf3",
-  dim: "#8b949e",
-  faint: "#4d565f",
-  background: "#58a6ff", // 底色心境
-  primary: "#f0883e", // 此刻反应
-  connection: "#3fb950", // 关系温度
-  scar: "#f85149", // 疤 / 基线
+  bg: "#050c11",
+  card: "#08161c",
+  panelLine: "rgba(150, 222, 208, 0.14)",
+  grid: "rgba(150, 222, 208, 0.09)",
+  border: "rgba(150, 222, 208, 0.16)",
+  text: "#dfece8",
+  dim: "#86a09c",
+  faint: "#5c7572",
+  background: "#8fe0d2", // 底色心境（薄荷）
+  primary: "#dcc19a", // 此刻反应（沙）
+  connection: "#4f9e94", // 关系温度（深薄荷）
+  scar: "#e0a2a2", // 疤 / 基线（淡红）
 };
 
 /* ───────────────────────────── 画图小工具 ───────────────────────────── */
@@ -76,7 +79,7 @@ function chart({ points, cursor, x0, y0, w, h, min = 38, max = 78, days = 10, bi
     const end = (day + 1) * 24 + 7;
     if (start >= cursor) continue;
     nights.push(
-      `<rect x="${X(start)}" y="${y0}" width="${Math.max(0, X(Math.min(end, cursor)) - X(start))}" height="${h}" fill="#ffffff" opacity="0.028"/>`,
+      `<rect x="${X(start)}" y="${y0}" width="${Math.max(0, X(Math.min(end, cursor)) - X(start))}" height="${h}" fill="${C.background}" opacity="0.035"/>`,
     );
   }
 
@@ -150,16 +153,18 @@ const legend = (x, y, big = false) => {
     [C.connection, "关系温度"],
     [C.scar, "疤之后的基线"],
   ];
-  const step = big ? 210 : 168;
-  return items
-    .map(([color, label], i) => {
-      const lx = x + i * step;
-      const dash = color === C.scar ? ' stroke-dasharray="4 3"' : "";
-      return `
-        <line x1="${lx}" y1="${y}" x2="${lx + 16}" y2="${y}" stroke="${color}" stroke-width="2.4"${dash}/>
-        <text x="${lx + 22}" y="${y + 4}" fill="${C.dim}" font-size="${big ? 15 : 12}">${esc(label)}</text>`;
-    })
-    .join("");
+  const size = big ? 14 : 12;
+  const gap = big ? 30 : 22;
+  const bar = (color, dashed) =>
+    dashed
+      ? `background:repeating-linear-gradient(90deg,${color} 0 4px,transparent 4px 7px)`
+      : `background:${color}`;
+  return `<div style="display:flex;align-items:center;gap:${gap}px;font-size:${size}px;color:${C.dim};white-space:nowrap">${items
+    .map(
+      ([color, label]) =>
+        `<span style="display:inline-flex;align-items:center;gap:8px"><i style="display:block;width:${big ? 20 : 16}px;height:3px;border-radius:2px;${bar(color, color === C.scar)}"></i>${label}</span>`,
+    )
+    .join("")}</div>`;
 };
 
 const stamp = (point) => {
@@ -175,10 +180,17 @@ const page = (body, { width, height }) => `<!doctype html>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; width: ${width}px; height: ${height}px; overflow: hidden; }
   body {
-    background: ${C.bg}; color: ${C.text};
-    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    color: ${C.text};
+    font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    background:
+      radial-gradient(1100px 640px at 12% -8%, rgba(37, 104, 96, 0.30), transparent 62%),
+      radial-gradient(900px 560px at 105% 8%, rgba(120, 92, 54, 0.13), transparent 60%),
+      radial-gradient(1200px 800px at 60% 115%, rgba(21, 68, 76, 0.22), transparent 62%),
+      ${C.bg};
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
+  .serif { font-family: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", "SimSun", serif; }
   .mono { font-family: "Cascadia Mono", Consolas, "SF Mono", monospace; }
 </style></head><body>${body}</body></html>`;
 
@@ -204,17 +216,18 @@ function frameHtml(timeline, cursor) {
     </div>`;
 
   return page(
-    `<div style="position:absolute;left:40px;top:26px">
-      <div class="mono" style="font-size:12px;color:${C.faint};letter-spacing:2px">DSH-SERENE · CORE/EMOTION.JS</div>
-      <div style="font-size:23px;font-weight:600;margin-top:6px">十天，一个人的情绪怎么走</div>
-      <div style="font-size:13px;color:${C.dim};margin-top:5px">同样的输入永远得到同样的曲线 —— 这张图不是手画的，是跑出来的。</div>
+    `<div style="position:absolute;left:40px;top:24px">
+      <div class="mono" style="font-size:11px;color:${C.connection};letter-spacing:2.4px">DSH-SERENE · CORE/EMOTION.JS</div>
+      <div class="serif" style="font-size:25px;font-weight:600;margin-top:7px;letter-spacing:.02em">十天，一个人的情绪怎么走</div>
+      <div style="font-size:12.5px;color:${C.dim};margin-top:6px">同样的输入永远得到同样的曲线 —— 这张图不是手画的，是跑出来的。</div>
     </div>
-    <div style="position:absolute;left:40px;top:112px">${legend(40, 112)}</div>
+    <div style="position:absolute;left:32px;top:104px;width:936px;height:384px;border-radius:18px;border:1px solid ${C.panelLine};background:linear-gradient(180deg, rgba(12, 29, 35, .66), rgba(6, 17, 22, .48));box-shadow:0 24px 80px rgba(0,0,0,.35)"></div>
+    <div style="position:absolute;left:40px;top:116px">${legend(40, 116)}</div>
     <div style="position:absolute;left:660px;top:0">${stat(660, "底色", now.background, C.background)}${stat(772, "此刻", now.primary, C.primary)}${stat(884, "关系", now.connection, C.connection)}</div>
     <svg width="${W}" height="${H}" style="position:absolute;left:0;top:0">${svg}</svg>
-    <div style="position:absolute;left:64px;top:466px;font-size:13px;color:${C.dim}" class="mono">${stamp(now)} &nbsp;·&nbsp; 此刻「${esc(now.label)}」&nbsp;·&nbsp; ${scarred ? "疤 " + now.scars + " 道" : "还没有疤"}</div>
+    <div style="position:absolute;left:64px;top:466px;font-size:12.5px;color:${C.dim}" class="mono">${stamp(now)} &nbsp;·&nbsp; 此刻「${esc(now.label)}」&nbsp;·&nbsp; ${scarred ? "疤 " + now.scars + " 道" : "还没有疤"}</div>
     <div style="position:absolute;left:64px;top:496px;font-size:15px;color:${finished ? C.scar : C.text}">${esc(caption)}</div>
-    <div style="position:absolute;left:64px;width:896px;top:498px;font-size:12px;color:${C.faint};text-align:right" class="mono">github.com/chisato-lycoreco/dsh-serene</div>`,
+    <div style="position:absolute;left:64px;width:896px;top:498px;font-size:11px;color:${C.faint};text-align:right" class="mono">github.com/chisato-lycoreco/dsh-serene</div>`,
     { width: W, height: H },
   );
 }
@@ -222,12 +235,13 @@ function frameHtml(timeline, cursor) {
 function posterHtml(timeline) {
   const { svg, now } = chart({ points: timeline.points, cursor: 240, x0: 64, y0: 218, w: 1152, h: 268, big: true });
   return page(
-    `<div style="position:absolute;left:64px;top:56px">
-      <div class="mono" style="font-size:16px;color:${C.background};letter-spacing:3px">DSH-SERENE</div>
-      <div style="font-size:44px;font-weight:700;margin-top:10px;line-height:1.2">人格是数据，情绪是状态，记忆是文件</div>
-      <div style="font-size:19px;color:${C.dim};margin-top:10px">DeepSeek Harness 插件 · PAD+ 六维 × 三层 · 会衰减、有昼夜节律、会留疤</div>
+    `<div style="position:absolute;left:64px;top:52px">
+      <div class="mono" style="font-size:15px;color:${C.connection};letter-spacing:3.4px">DSH-SERENE</div>
+      <div class="serif" style="font-size:47px;font-weight:600;margin-top:12px;line-height:1.18;letter-spacing:.02em">人格是数据，情绪是状态，记忆是文件</div>
+      <div style="font-size:18px;color:${C.dim};margin-top:12px">DeepSeek Harness 插件 · PAD+ 六维 × 三层 · 会衰减、有昼夜节律、会留疤</div>
     </div>
-    <div style="position:absolute;left:64px;top:192px">${legend(64, 192, true)}</div>
+    <div style="position:absolute;left:44px;top:190px;width:1192px;height:330px;border-radius:20px;border:1px solid ${C.panelLine};background:linear-gradient(180deg, rgba(12, 29, 35, .66), rgba(6, 17, 22, .48));box-shadow:0 30px 90px rgba(0,0,0,.36)"></div>
+    <div style="position:absolute;left:80px;top:196px">${legend(80, 196, true)}</div>
     <svg width="1280" height="640" style="position:absolute;left:0;top:0">${svg}</svg>
     <div style="position:absolute;left:64px;top:574px;font-size:16px;color:${C.dim}" class="mono">
       基线 ${fmt(timeline.baselineStart)} → ${fmt(timeline.baselineEnd)} &nbsp;·&nbsp; 关系 ${fmt(timeline.connectionStart)} → ${fmt(timeline.connectionEnd)} &nbsp;·&nbsp; 疤 ${timeline.wounds.length} 道

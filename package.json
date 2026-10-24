@@ -71,7 +71,8 @@
     "web:demo": "node web/server.mjs --demo",
     "shots": "node scripts/shots.mjs",
     "prepublishOnly": "npm test",
-    "opening": "node demo/opening.mjs"
+    "opening": "node demo/opening.mjs",
+    "art": "node scripts/art.mjs && node scripts/art.mjs --en"
   },
   "keywords": [
     "deepseek-harness",
