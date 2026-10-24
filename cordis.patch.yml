@@ -1,0 +1,11 @@
+# dsh-serene 的组合包层：往配置树里插一行插件。
+# 注意：patch 的 config 是整段替换，不是深合并——用户要在自己的
+# profile/cordis.patch.yml 里覆盖时，需要把要保留的键一起写上。
+- insert:
+    - id: serene
+      name: dsh-serene
+      config:
+        enabled: true
+        persona: demo
+        recallLimit: 5
+        halfLifeDays: 45

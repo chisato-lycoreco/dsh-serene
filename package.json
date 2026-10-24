@@ -1,0 +1,59 @@
+{
+  "name": "dsh-serene",
+  "version": "0.1.0",
+  "description": "人格 + 情感 + 记忆的 DeepSeek Harness 插件：把「一个会记得你的角色」接进 DSH。",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./core/emotion": "./core/emotion.js",
+    "./core/recall": "./core/recall.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/",
+    "core/",
+    "personas/",
+    "cordis.patch.yml",
+    "README.md",
+    "FRAMEWORK.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.1-rc.2 <0.3.0",
+    "node": ">=22.19"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.4"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.1.0-rc.6"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
+    "@deepseek-ai/schemastery": "3.18.5"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/index.js"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "persona",
+    "companion",
+    "agent-memory"
+  ],
+  "license": "MIT"
+}

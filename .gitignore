@@ -1,0 +1,14 @@
+# 依赖与构建产物
+node_modules/
+*.tgz
+
+# 运行期状态：她的情绪、记忆、疤
+data/
+.dev-data/
+*.tmp
+*.log
+
+# 编辑器
+.DS_Store
+.vscode/
+.idea/
