@@ -10,6 +10,8 @@
 > 把「一个会记得你的角色」接进 [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/)。
 > 人格是数据，情绪是状态，记忆是文件——三者都可读、可改、可复现。
 
+> **关于本项目**：不含人工代码，完全基于 [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) 和 **DeepSeek-V4.1-Flash** 构建。
+
 大多数「角色卡」是一段写在 system prompt 里的描述：模型每次都从零开始扮演，聊得越久越不像。
 这个插件换一种做法：**把角色拆成可计算的状态**，让「她此刻怎么样」由时间、事件和历史决定，
 而不是每次重新即兴。

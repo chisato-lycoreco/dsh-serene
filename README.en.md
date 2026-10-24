@@ -9,6 +9,8 @@
 
 > A character that remembers you, wired into [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) — personality as data, mood as state, memory as a file, all three readable, editable, and reproducible.
 
+> **About this project**: it contains no hand-written code; it was built entirely on [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) and **DeepSeek-V4.1-Flash**.
+
 Most character cards are a paragraph pasted into a system prompt: the model starts from zero every turn, and the longer the conversation runs, the less it sounds like anyone. This plugin takes a different route: **it breaks the character down into computable state**, so that "how she feels right now" follows from time, events, and history instead of being improvised again on each turn.
 
 - **Mood**: PAD+, six dimensions across three layers (background / primary / social). It decays, follows a circadian rhythm, and leaves scars.
