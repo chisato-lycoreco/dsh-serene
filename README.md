@@ -1,5 +1,9 @@
 # dsh-serene
 
+[![CI](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml/badge.svg)](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![DSH](https://img.shields.io/badge/dsh-0.2.1--rc.2-4d6bfe.svg)](https://deepseek-harness.github.io/deepseek-harness/)
+
 > 把「一个会记得你的角色」接进 [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/)。
 > 人格是数据，情绪是状态，记忆是文件——三者都可读、可改、可复现。
 
@@ -35,10 +39,10 @@
 # 从本地目录装（开发时）
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
-# 从 GitHub 装（发布后）
+# 从 GitHub 装（推荐，会跟着 v0.1.0 这个 tag）
 dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.1.0"
 
-# 从 tgz 装（Release 里下载）
+# 从 tgz 装（去 Release 页面下 dsh-serene-0.1.0.tgz）
 dsh plugin --profile web add ./dsh-serene-0.1.0.tgz
 ```
 
