@@ -166,6 +166,7 @@ export DEEPSEEK_API_KEY=sk-...      # 或者先在 GUI 的 Models 页填一次
 
 | 工具 | 作用 |
 | --- | --- |
+| `serene_style` | 发出去之前自检：列点、自称助手、解释设定、通用甜话、太长、一口气问太多 |
 | `serene_context` | 人格卡 +【此刻】在做什么 + 心情。常驻 prompt 关掉时，新会话开头调一次 |
 | `serene_mood` | 只读此刻状态（自然语言，不含数值） |
 | `serene_event` | 记一件事进情感层（31 种事件，见下） |
@@ -320,7 +321,7 @@ personas/zhiyao/
 
 ```bash
 npm install          # 只装 devDependencies（schemastery / dsh-tools）
-npm test             # node --test，76 个用例
+npm test             # node --test，86 个用例
 ```
 
 ```
@@ -330,13 +331,14 @@ core/motivation.js        纯函数：意图、预算、hold、替代动作
 core/lexicon.js           纯函数：事件词表；人格只追加，不改默认
 core/life.js              纯函数：她的一天（作息、精力、时间怎么说）
 core/mental.js            纯函数：精神（精力 / 专注 / 紧），由作息和情绪现算
+core/style.js             纯函数：表达自检（列点 / 客服腔 / 太长 / 问太多）
 src/stores/emotion-store.js     唯一碰磁盘的地方（原子写）
 src/stores/memory-store.js      jsonl 追加、容量、召回
 src/stores/motivation-store.js  今天的额度与 hold
 src/persona.js            人格档案（单文件 / 目录）→ prompt 段
 src/prompt.js             常驻 prompt 段：人格 +【此刻】+ 首启 + 记着的
 src/opening.js            首启只说一次：pending → opened
-src/tools.js              10 个工具（含 serene_status 诊断）
+src/tools.js              11 个工具（含 serene_status 诊断）
 src/index.js              name / inject / Config / apply
 ```
 

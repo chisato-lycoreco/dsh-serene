@@ -154,6 +154,7 @@ Override example (`~/.dsh/profiles/web/cordis.patch.yml`):
 
 | Tool | Purpose |
 | --- | --- |
+| `serene_style` | Check a draft before sending: lists, assistant voice, explaining the setup, generic endearments, length, too many questions |
 | `serene_context` | Persona card, what she is doing right now, and her mood. Call once at the start of a new session when the standing prompt section is off |
 | `serene_mood` | Read-only current state (natural language, no numbers) |
 | `serene_event` | Record one event into the affect layer (31 event types, below) |
@@ -301,7 +302,7 @@ For the fuller structural description, see [`FRAMEWORK.md`](./FRAMEWORK.md).
 
 ```bash
 npm install          # installs devDependencies only (schemastery / dsh-tools)
-npm test             # node --test, 76 cases
+npm test             # node --test, 86 cases
 ```
 
 ```
@@ -311,6 +312,7 @@ core/motivation.js              pure functions: intent, budget, hold, substitute
 core/lexicon.js                 pure functions: event vocabulary; personas append, never replace
 core/life.js                    pure functions: her day (routine, energy, how time is spoken)
 core/mental.js                  pure functions: energy / focus / tension, derived from routine and mood
+core/style.js                   pure functions: style check (lists, assistant voice, length, questions)
 src/stores/emotion-store.js     the only code that touches disk (atomic writes)
 src/stores/memory-store.js      jsonl append, capacity, recall
 src/stores/motivation-store.js  today's budget and holds

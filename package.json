@@ -11,6 +11,7 @@
     "./core/life": "./core/life.js",
     "./core/mental": "./core/mental.js",
     "./core/lexicon": "./core/lexicon.js",
+    "./core/style": "./core/style.js",
     "./package.json": "./package.json",
     ".": "./src/index.js"
   },

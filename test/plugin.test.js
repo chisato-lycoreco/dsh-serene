@@ -58,11 +58,12 @@ test("入口契约：name / inject / Config / apply 都在", () => {
   assert.equal(typeof apply, "function");
 });
 
-test("挂载后注册 10 个工具，名字都带前缀", (t) => {
+test("挂载后注册 11 个工具，名字都带前缀", (t) => {
   const { ctx, tools } = fakeContext();
   apply(ctx, { dataDir: tempDir(t) });
-  assert.equal(tools.size, 10);
+  assert.equal(tools.size, 11);
   for (const toolName of [
+    "serene_style",
     "serene_context",
     "serene_mood",
     "serene_event",

@@ -12,6 +12,7 @@ import { lifeAt, lifeBlock } from "../core/life.js";
 import { mentalAt, mentalLine } from "../core/mental.js";
 import { MEMORY_KINDS, MAX_TEXT_CHARS } from "../core/recall.js";
 import { PROACTIVE, describeDecision } from "../core/motivation.js";
+import { checkStyle } from "../core/style.js";
 import { buildPersonaBlock } from "./persona.js";
 
 /**
@@ -45,15 +46,32 @@ export function registerTools(ctx, { emotion, memory, motivation, opening = null
 
   ctx.tools.register(
     defineTool({
+      name: "serene_style",
+      description:
+        "发出去之前自检一句话：列点、自称助手、解释设定、通用的甜话、太长、一口气问太多。只检查，不改写。",
+      parameters: {
+        text: { type: "string", required: true, description: "你准备发出去的那句话。" },
+      },
+      output: stringOutput,
+      async execute(args) {
+        const result = checkStyle(args.text);
+        if (result.ok) return "像她说的。发吧。";
+        return result.issues.map((issue) => `- ${issue.message}`).join("\n");
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
       name: "serene_context",
       description:
-        "开始一段对话前先调用：返回她的人格卡和此刻的情感状态（自然语言，不含数值）。每次新会话只调一次就够。",
+        "开始一段对话前先调用：返回她的人格卡、【此刻】在做什么，以及当下的情感状态（自然语言，不含数值）。每次新会话只调一次就够。",
       parameters: {},
       output: stringOutput,
       async execute() {
         const now = Date.now();
-        const snapshot = emotion.snapshot({ now });
         const life = lifeAt(now, { seed: persona.id, routine: persona.routine });
+        const snapshot = emotion.snapshot({ now, asleep: life.asleep });
         const moment = `【此刻】${lifeBlock(life)}\n${mentalLine(mentalAt(life, snapshot.layers))}`;
         return `${buildPersonaBlock(persona)}\n\n${moment}\n\n${snapshot.text}`;
       },
