@@ -44,11 +44,23 @@ test("入口契约：name / inject / Config / apply 都在", () => {
   assert.equal(typeof apply, "function");
 });
 
-test("挂载后注册 6 个工具，名字都带前缀", (t) => {
+test("挂载后注册 7 个工具，名字都带前缀", (t) => {
   const { ctx, tools } = fakeContext();
   apply(ctx, { dataDir: tempDir(t) });
-  assert.equal(tools.size, 6);
+  assert.equal(tools.size, 7);
+  assert.ok(tools.has("serene_status"));
   for (const toolName of tools.keys()) assert.match(toolName, /^serene_/);
+});
+
+test("serene_status：正常时能报出人格、数据目录和记忆条数", async (t) => {
+  const { ctx, tools } = fakeContext();
+  const dir = tempDir(t);
+  apply(ctx, { dataDir: dir });
+  const text = await tools.get("serene_status").execute({}, {});
+  assert.match(text, /已挂载/);
+  assert.match(text, /人格：小满/);
+  assert.ok(text.includes(dir));
+  assert.match(text, /长期记忆：0 条/);
 });
 
 test("工具能跑：记事件、回忆、读状态", async (t) => {
@@ -73,11 +85,28 @@ test("工具能跑：记事件、回忆、读状态", async (t) => {
   await assert.rejects(() => event.execute({ kind: "not_a_kind" }, {}), /没有这种事件/);
 });
 
-test("人格读不到时安静降级，不拖垮宿主", (t) => {
+test("人格读不到时不拖垮宿主，但留下 serene_status 报原因", async (t) => {
   const { ctx, tools, logs } = fakeContext();
+  const originalWrite = process.stderr.write;
+  const stderr = [];
+  process.stderr.write = (chunk) => {
+    stderr.push(String(chunk));
+    return true;
+  };
+  t.after(() => {
+    process.stderr.write = originalWrite;
+  });
+
   apply(ctx, { dataDir: tempDir(t), persona: "missing" });
-  assert.equal(tools.size, 0);
+  assert.equal(tools.size, 1);
+  assert.ok(tools.has("serene_status"));
   assert.equal(logs[0][0], "error");
+
+  const text = await tools.get("serene_status").execute({}, {});
+  assert.match(text, /没有启用/);
+  assert.match(text, /missing/);
+  assert.match(text, /personaRoot/);
+  assert.match(stderr.join(""), /人格档案加载失败/);
 });
 
 test("enabled=false 时什么都不注册", (t) => {

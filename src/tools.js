@@ -5,6 +5,8 @@
  * 名字统一加 serene_ 前缀，避免和其他插件撞名。
  */
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { EVENT_EFFECTS } from "../core/emotion.js";
 import { buildPersonaBlock } from "./persona.js";
 
@@ -173,6 +175,59 @@ export function registerTools(ctx, { emotion, memory, persona, config }) {
           null,
           2,
         );
+      },
+    }),
+  );
+
+  // 最后一条：无论前面注册了几个，它都在（人格失败时这是唯一的一个）。
+  registerStatusTool(ctx, { persona, memory, dataDir: config.dataDir });
+}
+
+/**
+ * 诊断工具：回答「插件到底挂上没有」。
+ *
+ * 为什么值得单独一个工具：人格是运行时读盘的，文件名写错时插件会降级成
+ * 「什么都不注册」。以前那种降级对用户完全不可见——模型只能回一句
+ * 「没有这个工具」，用户以为是模型不会用。现在至少有一个入口能问出原因。
+ */
+export function registerStatusTool(ctx, { persona = null, memory = null, dataDir = "", error = null } = {}) {
+  if (typeof defineTool !== "function") {
+    throw new Error(
+      "无法加载 @deepseek-ai/dsh-tools（工具注册依赖 DSH 宿主提供该包）。" +
+        `请确认插件运行在 DSH 宿主内。原始错误：${importError?.message ?? "未知"}`,
+    );
+  }
+
+  ctx.tools.register(
+    defineTool({
+      name: "serene_status",
+      description:
+        "诊断用：确认 dsh-serene 是否真的挂载了。正常时返回人格、数据目录、记忆条数；加载失败时返回失败原因和修法。",
+      parameters: {},
+      output: stringOutput,
+      async execute() {
+        if (error) {
+          return [
+            "dsh-serene 已加载，但没有启用。",
+            `原因：${error}`,
+            "",
+            "怎么修：",
+            "- `config.persona` 写 `personas/` 下的文件名（默认 `demo`），或某个人格 JSON 的绝对路径；",
+            "- 人格放在别处时，用 `config.personaRoot` 指向那个目录；",
+            "- 改完重启 DSH，再调一次本工具确认。",
+            "",
+            "修好之前，其余 serene_* 工具都不会注册。",
+          ].join("\n");
+        }
+        const stateFile = join(dataDir, "emotion.json");
+        const lines = [
+          "dsh-serene 已挂载。",
+          `- 人格：${persona?.name ?? "(未知)"}`,
+          `- 数据目录：${dataDir || "(默认)"}`,
+          `- 情感状态：${existsSync(stateFile) ? `${stateFile}（已生成）` : "尚未生成，第一次记事件时创建"}`,
+        ];
+        if (memory) lines.push(`- 长期记忆：${memory.size} 条`);
+        return lines.join("\n");
       },
     }),
   );

@@ -12,7 +12,7 @@ import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Schema from "@deepseek-ai/schemastery";
 import { loadPersona } from "./persona.js";
-import { registerTools } from "./tools.js";
+import { registerTools, registerStatusTool } from "./tools.js";
 import { EmotionStore } from "./stores/emotion-store.js";
 import { MemoryStore } from "./stores/memory-store.js";
 
@@ -42,7 +42,15 @@ export function apply(ctx, config = {}) {
     persona = loadPersona(options.persona, { root: options.personaRoot });
   } catch (error) {
     // 人格读不到时安静降级：不拖垮整个 DSH 的插件树。
-    ctx.logger?.error?.(`[dsh-serene] 人格档案加载失败，本插件本次不启用：${error.message}`);
+    // 但不能安静到没人知道——stderr 留一行，serene_status 留一个入口。
+    const reason = `人格档案加载失败：${error.message}`;
+    ctx.logger?.error?.(`[dsh-serene] ${reason}（本次未启用；可调 serene_status 查看）`);
+    report(reason);
+    try {
+      registerStatusTool(ctx, { dataDir: options.dataDir, error: reason });
+    } catch (fallbackError) {
+      ctx.logger?.warn?.(`[dsh-serene] 诊断工具也没能注册：${fallbackError.message}`);
+    }
     return;
   }
 
@@ -53,7 +61,14 @@ export function apply(ctx, config = {}) {
   try {
     registerTools(ctx, { emotion, memory, persona, config: options });
   } catch (error) {
-    ctx.logger?.error?.(`[dsh-serene] 工具注册失败，本插件本次不启用：${error.message}`);
+    const reason = `工具注册失败：${error.message}`;
+    ctx.logger?.error?.(`[dsh-serene] ${reason}（本次未启用；可调 serene_status 查看）`);
+    report(reason);
+    try {
+      registerStatusTool(ctx, { dataDir, error: reason });
+    } catch {
+      // 连诊断工具都注册不了（宿主没提供 dsh-tools），只剩上面的 stderr。
+    }
     return;
   }
 
@@ -84,6 +99,20 @@ function normalizeConfig(config = {}) {
 
 function dshHome() {
   return process.env.DSH_HOME || join(homedir(), ".dsh");
+}
+
+/**
+ * 插件没启用时，给终端留一行。
+ *
+ * headless / 后台启动时 logger 常常没人看，而「装好了却没生效」是最难自查的
+ * 一类问题，所以这里直接写 stderr；写不出去也不影响宿主。
+ */
+function report(reason) {
+  try {
+    process.stderr.write(`[dsh-serene] ${reason}（本次未启用；可调 serene_status 查看）\n`);
+  } catch {
+    // stderr 被宿主接管时，只剩 serene_status 和 logger。
+  }
 }
 
 function resolvePath(value) {

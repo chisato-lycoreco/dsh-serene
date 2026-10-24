@@ -73,6 +73,26 @@ dsh --profile web --patch "/absolute/path/to/dsh-serene/cordis.patch.yml"
 > `cordis.patch.yml` 里的 `config` 是**整段替换**，不是深合并。你在自己 profile 里覆盖配置时，
 > 要把想保留的键一起写上。
 
+### 第一次运行：凭据与自检
+
+模型凭据只有两个来源：GUI 的 **Models 页面**写进 credentials service，或启动环境里的
+`DEEPSEEK_API_KEY`。**新 profile 不会自动继承**——另建了一个 profile 时，第一句话就会报
+`MISSING_CREDENTIAL`（这是凭据问题，不是插件问题）：
+
+```bash
+export DEEPSEEK_API_KEY=sk-...      # 或者先在 GUI 的 Models 页填一次
+```
+
+装完别只看配置文件。两步确认，第二步才是「真的能用」：
+
+| 想确认 | 怎么做 | 正常时 |
+| --- | --- | --- |
+| 配置进了配置树 | `dsh --profile web --dump-config \| grep -A3 dsh-serene` | 有 `- id: serene` |
+| 插件真的挂上 | 在**装着插件的那个 profile** 里说一句「用 serene_status 看看」 | 返回人格、数据目录、记忆条数 |
+
+这一步也是「插件正常」和「装好了但没生效」的唯一区分点：人格文件读不到时插件会降级
+（不拖垮宿主），但会留下 `serene_status` 和一行 stderr 说明原因。
+
 ---
 
 ## 配置
@@ -111,6 +131,7 @@ dsh --profile web --patch "/absolute/path/to/dsh-serene/cordis.patch.yml"
 | `serene_remember` | 写一条长期记忆 |
 | `serene_recall` | 按话题召回记忆，带时间和分数 |
 | `serene_state` | 调试用：三层数值、最近事件、疤 |
+| `serene_status` | 诊断：插件是否真的挂上（人格 / 数据目录 / 记忆条数）；加载失败时返回原因和修法 |
 
 事件类型：`chat / affection / address / intimacy / kiss / tease / care / humor / share /
 question / goodnight / rejection / neglect / conflict / repair / scold / coax / jealousy /
@@ -183,7 +204,7 @@ cold_read / warm_read / moved / disclose / suppress`。
 
 ```bash
 npm install          # 只装 devDependencies（schemastery / dsh-tools）
-npm test             # node --test，27 个用例
+npm test             # node --test，28 个用例
 ```
 
 ```
@@ -192,7 +213,7 @@ core/recall.js            纯函数：分词、衰减、召回打分
 src/stores/emotion-store.js   唯一碰磁盘的地方（原子写）
 src/stores/memory-store.js    jsonl 追加与召回
 src/persona.js            人格档案 → prompt 段
-src/tools.js              6 个工具
+src/tools.js              7 个工具（含 serene_status 诊断）
 src/index.js              name / inject / Config / apply
 ```
 

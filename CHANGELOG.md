@@ -2,6 +2,11 @@
 
 ## 未发布
 
+- 新增 `serene_status`：确认插件是否真的挂载（人格 / 数据目录 / 记忆条数）。
+  人格加载失败时它是唯一还注册的工具，直接返回失败原因和修法——不再是一装就静默消失。
+- 人格 / 工具注册失败时同时写一行 stderr，headless 和后台启动也能看见，不再只走 logger。
+- README / README.en.md 增加「第一次运行：凭据与自检」：新 profile 不继承凭据，
+  第一次运行会报 `MISSING_CREDENTIAL`；给最小验证命令和三层确认表。
 - README / README.en.md 的安装段落改成 npm 优先。
 - 这个文件会随下一版一起发出去。
 

@@ -66,6 +66,23 @@ dsh --profile web --patch "/absolute/path/to/dsh-serene/cordis.patch.yml"
 
 > `config` in `cordis.patch.yml` is **replaced as a whole**, not deep-merged. When you override it in your own profile, repeat every key you intend to keep.
 
+### First run: credentials and self-check
+
+Model credentials come from exactly two places: the GUI's **Models** page (written into the credentials service), or `DEEPSEEK_API_KEY` in the launching environment. **A new profile does not inherit them** — on a freshly created profile the very first message fails with `MISSING_CREDENTIAL` (that's credentials, not the plugin):
+
+```bash
+export DEEPSEEK_API_KEY=sk-...      # or set it once on the GUI Models page
+```
+
+Don't stop at the config file. Two checks — the second one is "it actually works":
+
+| Check | How | Healthy looks like |
+| --- | --- | --- |
+| entry in the config tree | `dsh --profile web --dump-config \| grep -A3 dsh-serene` | `- id: serene` is there |
+| the plugin is really mounted | in the profile that has the plugin, say "call serene_status" | persona, data dir, memory count |
+
+That second check is the only way to tell "working" from "installed but not running": when the persona file can't be read the plugin degrades instead of breaking the host, but it keeps `serene_status` and one stderr line explaining why.
+
 ---
 
 ## Configuration
@@ -104,6 +121,7 @@ Override example (`~/.dsh/profiles/web/cordis.patch.yml`):
 | `serene_remember` | Write one long-term memory |
 | `serene_recall` | Recall memories by topic, with timestamps and scores |
 | `serene_state` | Debug view: three-layer numbers, recent events, wounds |
+| `serene_status` | Health check: is the plugin actually mounted (persona / data dir / memory count); returns the reason and the fix when loading failed |
 
 Event types: `chat / affection / address / intimacy / kiss / tease / care / humor / share /
 question / goodnight / rejection / neglect / conflict / repair / scold / coax / jealousy /
@@ -174,7 +192,7 @@ For the fuller structural description, see [`FRAMEWORK.md`](./FRAMEWORK.md).
 
 ```bash
 npm install          # installs devDependencies only (schemastery / dsh-tools)
-npm test             # node --test, 27 cases
+npm test             # node --test, 28 cases
 ```
 
 ```
@@ -183,7 +201,7 @@ core/recall.js                pure functions: tokenizing, decay, recall scoring
 src/stores/emotion-store.js   the only code that touches disk (atomic writes)
 src/stores/memory-store.js    jsonl append and recall
 src/persona.js                persona profile → prompt section
-src/tools.js                  the six tools
+src/tools.js                  the seven tools (incl. the serene_status health check)
 src/index.js                  name / inject / Config / apply
 ```
 
