@@ -15,6 +15,8 @@ import { loadPersona } from "./persona.js";
 import { registerTools, registerStatusTool } from "./tools.js";
 import { EmotionStore } from "./stores/emotion-store.js";
 import { MemoryStore } from "./stores/memory-store.js";
+import { MotivationStore } from "./stores/motivation-store.js";
+import { PROACTIVE } from "../core/motivation.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(here, "..");
@@ -29,8 +31,12 @@ export const Config = Schema.object({
   persona: Schema.string().default("demo").description("人格档案：personas/ 下的文件名，或绝对路径"),
   personaRoot: Schema.string().default("").description("人格档案目录，留空用插件自带的 personas/"),
   dataDir: Schema.string().default("").description("状态与记忆的落盘目录，留空用 $DSH_HOME/plugins/dsh-serene"),
-  recallLimit: Schema.number().min(1).max(20).step(1).default(5).description("每次召回默认条数"),
-  halfLifeDays: Schema.number().min(1).max(365).default(45).description("记忆时间衰减的半衰期（天）"),
+  recallLimit: Schema.number().min(1).max(20).step(1).default(5).description("每次召回默认条数（v2 最多 6 条）"),
+  halfLifeDays: Schema.number().min(1).max(365).default(45).description("记忆时间衰减的半衰期（天），只对 v1 口径生效"),
+  memoryCurve: Schema.string().default("v2").description("记忆召回口径：v2 = 允许想不起来（默认）；v1 = 旧的取前 k 条"),
+  memoryCapacity: Schema.number().min(10).max(5000).step(10).default(500).description("长期记忆容量，满了按 重要度×保持率 淘汰"),
+  proactivePerDay: Schema.number().min(0).max(12).step(1).default(3).description("她每天最多主动开口几次，0 = 不主动"),
+  proactiveGapMinutes: Schema.number().min(10).max(360).step(5).default(60).description("两次主动之间至少隔多久（分钟）"),
 });
 
 export function apply(ctx, config = {}) {
@@ -56,10 +62,18 @@ export function apply(ctx, config = {}) {
 
   const dataDir = options.dataDir;
   const emotion = new EmotionStore({ dir: dataDir, baseline: persona.baseline });
-  const memory = new MemoryStore({ dir: dataDir });
+  const memory = new MemoryStore({ dir: dataDir, capacity: options.memoryCapacity, curve: options.memoryCurve });
+  const motivation = new MotivationStore({
+    dir: dataDir,
+    policy: {
+      ...PROACTIVE,
+      perDay: options.proactivePerDay,
+      minGapMinutes: options.proactiveGapMinutes,
+    },
+  });
 
   try {
-    registerTools(ctx, { emotion, memory, persona, config: options });
+    registerTools(ctx, { emotion, memory, motivation, persona, config: options });
   } catch (error) {
     const reason = `工具注册失败：${error.message}`;
     ctx.logger?.error?.(`[dsh-serene] ${reason}（本次未启用；可调 serene_status 查看）`);
@@ -76,6 +90,7 @@ export function apply(ctx, config = {}) {
   ctx.effect(() => () => {
     try {
       emotion.flush();
+      motivation.flush();
     } catch (error) {
       ctx.logger?.warn?.(`[dsh-serene] 退出时保存状态失败：${error.message}`);
     }
@@ -94,7 +109,17 @@ function normalizeConfig(config = {}) {
     dataDir: raw.dataDir ? resolvePath(raw.dataDir) : join(dshHome(), "plugins", "dsh-serene"),
     recallLimit: Number(raw.recallLimit) || 5,
     halfLifeDays: Number(raw.halfLifeDays) || 45,
+    memoryCurve: raw.memoryCurve === "v1" ? "v1" : "v2",
+    memoryCapacity: clampNumber(raw.memoryCapacity, 10, 5000, 500),
+    proactivePerDay: clampNumber(raw.proactivePerDay, 0, 12, 3),
+    proactiveGapMinutes: clampNumber(raw.proactiveGapMinutes, 10, 360, 60),
   };
+}
+
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(min, Math.min(max, number));
 }
 
 function dshHome() {

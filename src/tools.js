@@ -8,6 +8,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { EVENT_EFFECTS } from "../core/emotion.js";
+import { MEMORY_KINDS, MAX_TEXT_CHARS } from "../core/recall.js";
+import { PROACTIVE, describeDecision } from "../core/motivation.js";
 import { buildPersonaBlock } from "./persona.js";
 
 /**
@@ -28,7 +30,7 @@ try {
 const asText = (value) => [{ type: "text", text: String(value ?? "") }];
 const stringOutput = { schema: { type: "string" }, render: (_args, value) => asText(value) };
 
-export function registerTools(ctx, { emotion, memory, persona, config }) {
+export function registerTools(ctx, { emotion, memory, motivation, persona, config }) {
   if (typeof defineTool !== "function") {
     throw new Error(
       "无法加载 @deepseek-ai/dsh-tools（工具注册依赖 DSH 宿主提供该包）。" +
@@ -110,15 +112,43 @@ export function registerTools(ctx, { emotion, memory, persona, config }) {
       name: "serene_remember",
       description: "把值得记住的事写进长期记忆。写之前先想清楚：一年后还需要想起它吗？",
       parameters: {
-        text: { type: "string", required: true, description: "记忆内容，一句话，带上必要的时间/地点。" },
+        text: {
+          type: "string",
+          required: true,
+          description: `记忆内容，一句话，带上必要的时间/地点；不超过 ${MAX_TEXT_CHARS} 字。`,
+        },
+        kind: {
+          type: "string",
+          description: `记忆类型，可选：${MEMORY_KINDS.join(" / ")}。默认 fact。`,
+        },
         tags: { type: "array", description: "标签，比如 [\"重要\", \"约定\"]。" },
         importance: { type: "number", description: "重要度 0~1，默认 0.5。" },
       },
       output: stringOutput,
       async execute(args) {
-        const saved = memory.add({ text: args.text, tags: args.tags, importance: args.importance, source: "tool" });
+        const text = String(args.text ?? "").trim();
+        const kind = String(args.kind ?? "fact").trim() || "fact";
+        if (!MEMORY_KINDS.includes(kind)) {
+          throw new Error(`没有这种记忆类型：${kind}。可用：${MEMORY_KINDS.join(" / ")}`);
+        }
+        // 记忆是提炼，不是聊天记录：写不短说明还没想清楚，让她重写而不是静默截断。
+        const length = Array.from(text).length;
+        if (length > MAX_TEXT_CHARS) {
+          throw new Error(
+            `记忆太长（${length} 字，上限 ${MAX_TEXT_CHARS}）。先想清楚：这件事里真正要留下的是哪一个细节？`,
+          );
+        }
+        const saved = memory.add({
+          text,
+          kind,
+          tags: args.tags,
+          importance: args.importance,
+          source: "tool",
+        });
         if (!saved) throw new Error("记忆内容为空，没有写入。");
-        return `记住了（第 ${saved.id} 条，共 ${memory.size} 条）。`;
+        const forgotten = memory.forgotten({ limit: 1 })[0];
+        const dropped = forgotten && Math.abs(Number(forgotten.at) - Date.now()) < 5000 ? `；淘汰了最旧的一条` : "";
+        return `记住了（第 ${saved.id} 条，共 ${memory.size} 条，${saved.kind}）。${dropped}`.trim();
       },
     }),
   );
@@ -129,20 +159,22 @@ export function registerTools(ctx, { emotion, memory, persona, config }) {
       description: "按话题检索长期记忆。返回最相关的几条，带时间和分数；没有就明说没有。",
       parameters: {
         query: { type: "string", required: true, description: "要回忆的话题，可以是几个关键词。" },
-        limit: { type: "number", description: `最多返回几条，默认 ${limitDefault}。` },
+        limit: { type: "number", description: `最多返回几条，默认 ${limitDefault}；v2 口径下最多 6 条。` },
       },
       output: stringOutput,
       async execute(args) {
         const query = String(args.query ?? "").trim();
         if (!query) throw new Error("查询为空。");
         const limit = Math.max(1, Math.min(20, Number(args.limit) || limitDefault));
-        const found = memory.recall(query, { limit, halfLifeDays });
+        const snapshot = emotion.snapshot();
+        // 心情只改「哪条更容易浮起来」，不改内容；事实/知识类不染色（见 core/recall.js）。
+        const found = memory.recall(query, { limit, halfLifeDays, mood: snapshot.mood });
         if (!found.length) return "没有想起相关的事。";
         return found
           .map((item, index) => {
             const when = new Date(Number(item.updatedAt ?? item.createdAt ?? Date.now())).toISOString().slice(0, 10);
             const tags = item.tags?.length ? ` #${item.tags.join(" #")}` : "";
-            return `${index + 1}. [${when}｜${item.score}] ${item.text}${tags}`;
+            return `${index + 1}. [${when}｜${item.kind ?? "fact"}｜${item.score}] ${item.text}${tags}（id: ${item.id}）`;
           })
           .join("\n");
       },
@@ -151,8 +183,28 @@ export function registerTools(ctx, { emotion, memory, persona, config }) {
 
   ctx.tools.register(
     defineTool({
+      name: "serene_reinforce",
+      description:
+        "这几条记忆真的被你用进回复了，才调它。会被系统记住（同样的输入得同样的结果），下次更容易想起；只是看了一眼不算。",
+      parameters: {
+        ids: { type: "array", required: true, description: "serene_recall 返回的 id 列表，比如 [\"m_lq3k2_ab12\"]。" },
+      },
+      output: stringOutput,
+      async execute(args) {
+        const ids = (Array.isArray(args.ids) ? args.ids : [args.ids]).map(String).filter(Boolean);
+        if (!ids.length) throw new Error("没有给 id。");
+        const touched = memory.reinforce(ids);
+        if (!touched.length) return "没有找到这些 id，什么都没改。";
+        const list = touched.map((item) => `${item.id}（稳固度 ×${item.gain}）`).join("、");
+        return `记下了：${list}。越隔一段时间再想起，涨得越明显。`;
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
       name: "serene_state",
-      description: "调她的内部状态（调试用）：三层数值、最近事件、疤。对方看不到这些数字。",
+      description: "调她的内部状态（调试用）：三层数值、余震、最近事件、疤、今天的主动额度。对方看不到这些数字。",
       parameters: {},
       output: stringOutput,
       async execute() {
@@ -169,7 +221,9 @@ export function registerTools(ctx, { emotion, memory, persona, config }) {
             },
             tone: snapshot.tone,
             mood: snapshot.mood,
+            residue: snapshot.residue,
             wounds: snapshot.wounds,
+            proactive: motivation.snapshot(),
             recent: causes,
           },
           null,
@@ -179,8 +233,57 @@ export function registerTools(ctx, { emotion, memory, persona, config }) {
     }),
   );
 
+  ctx.tools.register(
+    defineTool({
+      name: "serene_proactive",
+      description:
+        "问一句：现在该不该主动开口。返回能不能说、理由、今天还剩几次；不说时会给出一个替代动作和回收时间。",
+      parameters: {
+        asleep: { type: "boolean", description: "对方是不是已经睡了（或明确说要去睡）。" },
+      },
+      output: stringOutput,
+      async execute(args) {
+        const now = Date.now();
+        const asleep = args.asleep === true;
+        const snapshot = emotion.snapshot({ now, asleep });
+        const decision = motivation.decide({
+          now,
+          layers: snapshot.layers,
+          lastInteractionAt: snapshot.lastInteractionAt,
+          asleep,
+        });
+        const budget = `今天 ${decision.budget.used}/${decision.budget.limit} 次`;
+        return `${describeDecision(decision)}（${budget}）`;
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "serene_proactive_done",
+      description: "她真的开口了之后调一次。被拒绝了也调，传 outcome=rejected——被拒要记账，不然她会反复凑上去。",
+      parameters: {
+        outcome: { type: "string", description: '"spoken"（默认）或 "rejected"。' },
+        note: { type: "string", description: "一句话说明你怎么回的，进她的情感层。" },
+      },
+      output: stringOutput,
+      async execute(args) {
+        const now = Date.now();
+        const rejected = String(args.outcome ?? "").trim() === "rejected";
+        if (rejected) {
+          // 被拒不是一件中性的事：记进情感层，同时冷却，别马上再来一次。
+          emotion.record("rejection", { now, note: args.note || "被拒绝了" });
+          const next = motivation.reject({ now });
+          return `记下了：这次被拒，先退开 ${PROACTIVE.cooldownMinutes} 分钟。今天 ${next.today.count}/${next.policy.perDay} 次。`;
+        }
+        const next = motivation.commit({ now });
+        return `记下了：今天第 ${next.today.count}/${next.policy.perDay} 次主动。`;
+      },
+    }),
+  );
+
   // 最后一条：无论前面注册了几个，它都在（人格失败时这是唯一的一个）。
-  registerStatusTool(ctx, { persona, memory, dataDir: config.dataDir });
+  registerStatusTool(ctx, { persona, memory, motivation, dataDir: config.dataDir });
 }
 
 /**
@@ -190,7 +293,7 @@ export function registerTools(ctx, { emotion, memory, persona, config }) {
  * 「什么都不注册」。以前那种降级对用户完全不可见——模型只能回一句
  * 「没有这个工具」，用户以为是模型不会用。现在至少有一个入口能问出原因。
  */
-export function registerStatusTool(ctx, { persona = null, memory = null, dataDir = "", error = null } = {}) {
+export function registerStatusTool(ctx, { persona = null, memory = null, motivation = null, dataDir = "", error = null } = {}) {
   if (typeof defineTool !== "function") {
     throw new Error(
       "无法加载 @deepseek-ai/dsh-tools（工具注册依赖 DSH 宿主提供该包）。" +
@@ -226,7 +329,18 @@ export function registerStatusTool(ctx, { persona = null, memory = null, dataDir
           `- 数据目录：${dataDir || "(默认)"}`,
           `- 情感状态：${existsSync(stateFile) ? `${stateFile}（已生成）` : "尚未生成，第一次记事件时创建"}`,
         ];
-        if (memory) lines.push(`- 长期记忆：${memory.size} 条`);
+        if (memory) {
+          const stats = memory.stats();
+          const kinds = Object.entries(stats.kinds)
+            .map(([kind, count]) => `${kind} ${count}`)
+            .join(" / ");
+          lines.push(`- 长期记忆：${stats.size}/${stats.capacity} 条（${stats.curve} 口径${kinds ? `；${kinds}` : ""}）`);
+          lines.push(`- 淘汰过：${stats.forgotten} 条（jsonl 里留了 forget 记录，可以查「她忘了什么」）`);
+        }
+        if (motivation) {
+          const state = motivation.snapshot();
+          lines.push(`- 主动：今天 ${state.today.count}/${state.policy.perDay} 次，还剩 ${state.remaining} 次`);
+        }
         return lines.join("\n");
       },
     }),

@@ -29,8 +29,14 @@ import {
   woundDepth,
 } from "../../core/emotion.js";
 
-const VERSION = 1;
+const VERSION = 2;
 const HISTORY_LIMIT = 40;
+/** 余震最多同时记这么多条，每条自己带半衰期。 */
+const RESIDUE_LIMIT = 8;
+/** 余震超过一周就没有意义了：底色早就走回去了。 */
+const RESIDUE_TTL_HOURS = 7 * 24;
+/** |Δ愉悦| 到这一步才算「高冲击」，才留余震。 */
+const RESIDUE_THRESHOLD = 8;
 /** 这些事件会更新「最后一次互动」，用来算冷落造成的连接感流失。 */
 const INTERACTION_KINDS = new Set(["chat", "affection", "address", "intimacy", "kiss", "tease", "care", "humor", "share", "question", "goodnight", "repair", "coax", "conflict", "scold", "rejection"]);
 /** 会考虑留疤的事件。 */
@@ -80,6 +86,7 @@ export class EmotionStore {
       lastInteractionAt: isFiniteNumber(raw?.lastInteractionAt) ? Number(raw.lastInteractionAt) : 0,
       layers: normalizeLayers(raw?.layers ?? {}),
       wounds,
+      residue: sanitizeResidue(raw?.residue),
       history: Array.isArray(raw?.history) ? raw.history.slice(-HISTORY_LIMIT) : [],
     };
     this.tick({ now, save: false });
@@ -98,7 +105,9 @@ export class EmotionStore {
       asleep,
       lastInteractionAt: state.lastInteractionAt,
       baseline: this.#baseline,
+      residue: state.residue,
     });
+    state.residue = pruneResidue(state.residue, now);
     state.updatedAt = now;
     if (save) this.save();
     return true;
@@ -122,6 +131,7 @@ export class EmotionStore {
     if (INTERACTION_KINDS.has(kind)) state.lastInteractionAt = now;
 
     const wound = this.#maybeWound(kind, { now, strength, note, context });
+    const residue = this.#maybeResidue(kind, { now, before });
     state.history.push({ kind, at: now, intensity: Math.round(strength * 100) / 100 });
     if (state.history.length > HISTORY_LIMIT) state.history.splice(0, state.history.length - HISTORY_LIMIT);
     state.updatedAt = now;
@@ -131,6 +141,7 @@ export class EmotionStore {
       kind,
       note: note || undefined,
       wound,
+      residue,
       changed: this.#diff(before, state.layers),
       layers: cloneLayers(state.layers),
     };
@@ -169,6 +180,7 @@ export class EmotionStore {
     const snapshot = {
       ...described,
       wounds,
+      residue: this.#state.residue.slice(-4),
       reading,
       mood: moodOf(this.#state.layers),
       proactiveGapMs: proactiveGap(this.#state.layers),
@@ -197,6 +209,7 @@ export class EmotionStore {
       lastInteractionAt: 0,
       layers: normalizeLayers({}),
       wounds: [],
+      residue: [],
       history: [],
     };
     this.#baseline = BASELINE;
@@ -251,6 +264,30 @@ export class EmotionStore {
     return wound;
   }
 
+  /**
+   * 余震：高冲击事件（|Δ愉悦| ≥ 8）会在底色上留一段尾巴，24–48 小时半衰期。
+   *
+   * 为什么要单独记：一次争吵过去 6 小时，初级层已经回落，但「今天不对劲」这件事
+   * 还在。没有余震，她第二天早上会像什么都没发生；有了余震，底色会自己慢慢爬回来。
+   */
+  #maybeResidue(kind, { now, before }) {
+    const delta = this.#state.layers.primary.pleasure - before.primary.pleasure;
+    if (Math.abs(delta) < RESIDUE_THRESHOLD) {
+      this.#state.residue = pruneResidue(this.#state.residue, now);
+      return null;
+    }
+    const steep = Math.min(1, (Math.abs(delta) - RESIDUE_THRESHOLD) / 16);
+    const residue = {
+      startedAt: now,
+      kind,
+      // 8 点刚好一天，24 点以上两天——冲击越大，尾巴越长。
+      halfLifeHours: Math.round(24 + 24 * steep),
+      delta: { pleasure: Math.round(delta * 10) / 10 },
+    };
+    this.#state.residue = pruneResidue([...this.#state.residue, residue], now);
+    return residue;
+  }
+
   /** 变化最大的几维，给工具输出用。 */
   #diff(before, after) {
     const changed = [];
@@ -262,4 +299,30 @@ export class EmotionStore {
     }
     return changed.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 6);
   }
+}
+
+/** 余震读盘归一化：坏数据丢掉，别让一条脏记录把整层情绪带歪。 */
+function sanitizeResidue(input) {
+  if (!Array.isArray(input)) return [];
+  return input
+    .filter((item) => item && Number.isFinite(Number(item.startedAt)))
+    .map((item) => ({
+      startedAt: Number(item.startedAt),
+      kind: String(item.kind ?? ""),
+      halfLifeHours: Math.max(1, Number(item.halfLifeHours) || 48),
+      delta: Object.fromEntries(
+        Object.entries(item.delta ?? {})
+          .filter(([, value]) => Number.isFinite(Number(value)))
+          .map(([key, value]) => [key, Number(value)]),
+      ),
+    }))
+    .filter((item) => Object.keys(item.delta).length > 0)
+    .slice(-RESIDUE_LIMIT);
+}
+
+function pruneResidue(list, now) {
+  const cutoff = now - RESIDUE_TTL_HOURS * 3_600_000;
+  return sanitizeResidue(list)
+    .filter((item) => item.startedAt > cutoff)
+    .slice(-RESIDUE_LIMIT);
 }

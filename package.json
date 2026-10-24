@@ -1,6 +1,6 @@
 {
   "name": "dsh-serene",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "人格 + 情感 + 记忆的 DeepSeek Harness 插件：把「一个会记得你的角色」接进 DSH。",
   "type": "module",
   "main": "src/index.js",
@@ -8,6 +8,7 @@
     ".": "./src/index.js",
     "./core/emotion": "./core/emotion.js",
     "./core/recall": "./core/recall.js",
+    "./core/motivation": "./core/motivation.js",
     "./package.json": "./package.json"
   },
   "files": [

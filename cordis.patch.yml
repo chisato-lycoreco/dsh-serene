@@ -9,3 +9,7 @@
         persona: demo
         recallLimit: 5
         halfLifeDays: 45
+        memoryCurve: v2
+        memoryCapacity: 500
+        proactivePerDay: 3
+        proactiveGapMinutes: 60

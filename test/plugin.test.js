@@ -44,11 +44,24 @@ test("入口契约：name / inject / Config / apply 都在", () => {
   assert.equal(typeof apply, "function");
 });
 
-test("挂载后注册 7 个工具，名字都带前缀", (t) => {
+test("挂载后注册 10 个工具，名字都带前缀", (t) => {
   const { ctx, tools } = fakeContext();
   apply(ctx, { dataDir: tempDir(t) });
-  assert.equal(tools.size, 7);
-  assert.ok(tools.has("serene_status"));
+  assert.equal(tools.size, 10);
+  for (const toolName of [
+    "serene_context",
+    "serene_mood",
+    "serene_event",
+    "serene_remember",
+    "serene_recall",
+    "serene_reinforce",
+    "serene_state",
+    "serene_proactive",
+    "serene_proactive_done",
+    "serene_status",
+  ]) {
+    assert.ok(tools.has(toolName), `缺少 ${toolName}`);
+  }
   for (const toolName of tools.keys()) assert.match(toolName, /^serene_/);
 });
 
@@ -60,7 +73,7 @@ test("serene_status：正常时能报出人格、数据目录和记忆条数", a
   assert.match(text, /已挂载/);
   assert.match(text, /人格：小满/);
   assert.ok(text.includes(dir));
-  assert.match(text, /长期记忆：0 条/);
+  assert.match(text, /长期记忆：0\/500 条/);
 });
 
 test("工具能跑：记事件、回忆、读状态", async (t) => {
@@ -83,6 +96,32 @@ test("工具能跑：记事件、回忆、读状态", async (t) => {
   assert.ok(parsed.layers.primary.pleasure > 60);
 
   await assert.rejects(() => event.execute({ kind: "not_a_kind" }, {}), /没有这种事件/);
+});
+
+test("新工具能跑：问主动、记账、强化记忆", async (t) => {
+  const { ctx, tools } = fakeContext();
+  apply(ctx, { dataDir: tempDir(t) });
+
+  const proactive = await tools.get("serene_proactive").execute({}, {});
+  assert.match(proactive, /现在可以开口/);
+  assert.match(proactive, /今天 0\/3 次/);
+
+  const done = await tools.get("serene_proactive_done").execute({ outcome: "spoken" }, {});
+  assert.match(done, /今天第 1\/3 次/);
+
+  const rejected = await tools.get("serene_proactive_done").execute({ outcome: "rejected" }, {});
+  assert.match(rejected, /被拒/);
+
+  const remember = tools.get("serene_remember");
+  const saved = await remember.execute({ text: "她怕打雷", kind: "preference", importance: 0.9 }, {});
+  const id = saved.match(/m_[a-z0-9_]+/)?.[0];
+  assert.ok(id, `返回值里应该有 id：${saved}`);
+
+  await assert.rejects(() => remember.execute({ text: "字".repeat(81) }, {}), /太长/);
+  await assert.rejects(() => remember.execute({ text: "她怕打雷", kind: "乱写" }, {}), /没有这种记忆类型/);
+
+  const reinforced = await tools.get("serene_reinforce").execute({ ids: [id] }, {});
+  assert.match(reinforced, /记下了/);
 });
 
 test("人格读不到时不拖垮宿主，但留下 serene_status 报原因", async (t) => {

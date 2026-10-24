@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EmotionStore } from "../src/stores/emotion-store.js";
@@ -85,4 +85,41 @@ test("未知事件直接报错，不静默吞掉", (t) => {
   const { store, cleanup } = tempStore();
   t.after(cleanup);
   assert.throws(() => store.record("nope", { now: T0 }), /未知事件/);
+});
+
+test("余震：高冲击的事会留一段尾巴，普通事件不留", (t) => {
+  const { dir, store, cleanup } = tempStore();
+  t.after(cleanup);
+
+  const result = store.record("conflict", { now: T0, context: "我们分手吧", intensity: 1.4 });
+  assert.ok(result.residue, "这一次要留余震");
+  assert.ok(result.residue.halfLifeHours >= 24 && result.residue.halfLifeHours <= 48);
+  assert.ok(result.residue.delta.pleasure < -8);
+
+  const saved = JSON.parse(readFileSync(join(dir, "emotion.json"), "utf8"));
+  assert.equal(saved.residue.length, 1);
+  assert.equal(saved.residue[0].delta.pleasure, result.residue.delta.pleasure);
+  assert.equal(new EmotionStore({ dir }).snapshot({ now: T0 }).residue.length, 1, "重开还在");
+
+  const calm = tempStore();
+  t.after(calm.cleanup);
+  assert.equal(calm.store.record("chat", { now: T0 }).residue, null, "普通聊天不留");
+
+  const week = store.snapshot({ now: T0 + 8 * 86_400_000 });
+  assert.equal(week.residue.length, 0, "一周后清掉");
+});
+
+test("余震真的作用到底色：同样的状态，有尾巴的那份 48 小时后还更低", (t) => {
+  const a = tempStore();
+  t.after(a.cleanup);
+  a.store.record("conflict", { now: T0, context: "我们分手吧", intensity: 1.4 });
+  const raw = JSON.parse(readFileSync(join(a.dir, "emotion.json"), "utf8"));
+
+  const b = tempStore();
+  t.after(b.cleanup);
+  writeFileSync(join(b.dir, "emotion.json"), JSON.stringify({ ...raw, residue: [] }), "utf8");
+
+  const withTail = a.store.snapshot({ now: T0 + 48 * 3600_000 }).layers.background.pleasure;
+  const withoutTail = new EmotionStore({ dir: b.dir }).snapshot({ now: T0 + 48 * 3600_000 }).layers.background.pleasure;
+  assert.ok(withTail < withoutTail - 0.5, `有尾巴的那份应该更低（${withTail} vs ${withoutTail}）`);
 });
