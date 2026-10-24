@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: node ${{ matrix.node }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ["22", "24"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # 不缓存 lockfile：本包没有提交 lockfile，devDeps 用精确版本锁定
+      - run: npm install --no-audit --no-fund
+
+      - name: 单元测试（core 纯函数 + store 落盘）
+        run: npm test
+
+      - name: 语法检查
+        run: npm run check
+
+      # 冒烟：入口能被 import，且不依赖宿主就能拿到 Config / name
+      - name: 入口冒烟
+        run: |
+          node -e "import('./src/index.js').then(m => { if (m.name !== 'dsh-serene') throw new Error('name 不对: ' + m.name); console.log('ok', m.name, typeof m.apply); })"
+
+      # 打包产物里必须带上 patch 文件，否则 dsh plugin add 之后挂不进配置树
+      - name: 打包检查
+        run: npm pack --dry-run
