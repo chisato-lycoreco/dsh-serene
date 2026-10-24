@@ -2,6 +2,7 @@
 
 # dsh-serene
 
+[![npm](https://img.shields.io/npm/v/dsh-serene.svg)](https://www.npmjs.com/package/dsh-serene)
 [![CI](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml/badge.svg)](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![DSH](https://img.shields.io/badge/dsh-0.2.1--rc.2-4d6bfe.svg)](https://deepseek-harness.github.io/deepseek-harness/)
@@ -38,11 +39,14 @@ That chart is not drawn by hand: `node demo/timeline.mjs` runs ten days through 
 Requires DSH `>= 0.2.1-rc.2` and Node `>= 22.19`.
 
 ```bash
+# from npm (recommended)
+dsh plugin --profile web add dsh-serene
+
+# from GitHub (pins a tag, no npm involved)
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.1.0"
+
 # from a local directory (development)
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
-
-# from GitHub (recommended; pins tag v0.1.0)
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.1.0"
 
 # from a tgz (grab dsh-serene-0.1.0.tgz from the Releases page)
 dsh plugin --profile web add ./dsh-serene-0.1.0.tgz

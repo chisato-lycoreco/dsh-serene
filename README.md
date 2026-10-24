@@ -1,5 +1,6 @@
 # dsh-serene
 
+[![npm](https://img.shields.io/npm/v/dsh-serene.svg)](https://www.npmjs.com/package/dsh-serene)
 [![CI](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml/badge.svg)](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![DSH](https://img.shields.io/badge/dsh-0.2.1--rc.2-4d6bfe.svg)](https://deepseek-harness.github.io/deepseek-harness/)
@@ -43,11 +44,14 @@
 要求：DSH `>= 0.2.1-rc.2`，Node `>= 22.19`。
 
 ```bash
+# 从 npm 装（推荐）
+dsh plugin --profile web add dsh-serene
+
+# 从 GitHub 装（跟着 tag，不经过 npm）
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.1.0"
+
 # 从本地目录装（开发时）
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
-
-# 从 GitHub 装（推荐，会跟着 v0.1.0 这个 tag）
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.1.0"
 
 # 从 tgz 装（去 Release 页面下 dsh-serene-0.1.0.tgz）
 dsh plugin --profile web add ./dsh-serene-0.1.0.tgz
