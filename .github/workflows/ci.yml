@@ -34,6 +34,11 @@ jobs:
       - name: 语法检查
         run: npm run check
 
+      # demo 是 README 那张图的唯一来源，坏了要在 CI 里先坏
+      - name: demo（十天时间轴）
+        run: node demo/timeline.mjs > /dev/null
+        shell: bash
+
       # 冒烟：入口能被 import，且不依赖宿主就能拿到 Config / name
       - name: 入口冒烟
         run: |

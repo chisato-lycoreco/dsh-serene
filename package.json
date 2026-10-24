@@ -49,7 +49,8 @@
     "test": "node --test",
     "check": "node --check src/index.js",
     "demo": "node demo/timeline.mjs",
-    "preview": "node demo/render.mjs"
+    "preview": "node demo/render.mjs",
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "deepseek-harness",
@@ -66,5 +67,8 @@
     "url": "https://github.com/chisato-lycoreco/dsh-serene/issues"
   },
   "homepage": "https://github.com/chisato-lycoreco/dsh-serene#readme",
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }
