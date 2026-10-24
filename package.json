@@ -55,5 +55,13 @@
     "companion",
     "agent-memory"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Something11235/dsh-serene.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Something11235/dsh-serene/issues"
+  },
+  "homepage": "https://github.com/Something11235/dsh-serene#readme",
   "license": "MIT"
 }
