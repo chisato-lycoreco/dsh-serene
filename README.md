@@ -48,13 +48,13 @@
 dsh plugin --profile web add dsh-serene
 
 # 从 GitHub 装（跟着 tag，不经过 npm）
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.1.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.1.1"
 
 # 从本地目录装（开发时）
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
-# 从 tgz 装（去 Release 页面下 dsh-serene-0.1.0.tgz）
-dsh plugin --profile web add ./dsh-serene-0.1.0.tgz
+# 从 tgz 装（去 Release 页面下 dsh-serene-0.1.1.tgz）
+dsh plugin --profile web add ./dsh-serene-0.1.1.tgz
 ```
 
 安装前**先完全退出 DSH**（安装会改 profile 的 `package.json` 和 `cordis.patch.yml`）。

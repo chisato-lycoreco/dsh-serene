@@ -43,13 +43,13 @@ Requires DSH `>= 0.2.1-rc.2` and Node `>= 22.19`.
 dsh plugin --profile web add dsh-serene
 
 # from GitHub (pins a tag, no npm involved)
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.1.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.1.1"
 
 # from a local directory (development)
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
-# from a tgz (grab dsh-serene-0.1.0.tgz from the Releases page)
-dsh plugin --profile web add ./dsh-serene-0.1.0.tgz
+# from a tgz (grab dsh-serene-0.1.1.tgz from the Releases page)
+dsh plugin --profile web add ./dsh-serene-0.1.1.tgz
 ```
 
 **Quit DSH completely before installing** — installation modifies the profile's `package.json` and `cordis.patch.yml`. Afterwards, confirm the plugin is in the config tree:
