@@ -2,6 +2,8 @@
 
 # dsh-serene
 
+> **Just want to chat without installing DSH?** Jump to [Start here: double-click it](#start-here-double-click-it-no-code).
+
 [![npm](https://img.shields.io/npm/v/dsh-serene.svg)](https://www.npmjs.com/package/dsh-serene)
 [![CI](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml/badge.svg)](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
@@ -28,6 +30,165 @@ That chart is not drawn by hand: `node demo/timeline.mjs` runs ten days through 
 
 ---
 
+## Start here: double-click it (no code)
+
+> This section is for people who do **not** want to install DSH or type commands. The web app is a small page shipped in this repo: double-click to start, it opens in your browser, paste your own DeepSeek API key once, and talk. Personality, mood, and memory still come from [`core/`](./core/) — it is not a separate implementation.
+
+The interface is currently in Chinese; this section walks through what each part means.
+
+<img src="docs/screenshots/01-chat.png" alt="The web app: conversation on the left, her current moment, mood, and memories on the right" width="900">
+
+*Screenshots come from demo mode (fixed lines, no network), not anyone's real chats.*
+
+### Step 1: Install Node.js (once)
+
+The page runs on Node.js. It is not a programming tool; accept the defaults during installation.
+
+1. Open <https://nodejs.org/>.
+2. Click the green **LTS** button.
+3. Windows: download the `.msi`; macOS: download the `.pkg`. Double-click and accept the defaults.
+4. No reboot needed. Go to step 2.
+
+> If Node.js is already installed, check the version: it must be **22.19 or newer**. The launcher checks this and tells you if it is too old.
+
+### Step 2: Download the repository
+
+1. Open <https://github.com/chisato-lycoreco/dsh-serene>.
+2. Click the green **Code** button → **Download ZIP**.
+3. Download the whole ZIP, not just the README.
+
+> If GitHub is unreachable, open the repository's **Releases** page and download the matching archive (`.zip` or `.tgz`). The result is the same.
+
+### Step 3: Extract it to a clean path
+
+Extract the ZIP. You should get a `dsh-serene` folder. A good place is:
+
+```text
+D:\dsh-serene
+```
+
+Avoid the Desktop, OneDrive, and `C:\Program Files`, and try not to put Chinese characters or spaces in the path. It is not always fatal — it is just the hardest kind of problem to diagnose later.
+
+<img src="docs/screenshots/06-launch.png" alt="What the extracted folder looks like: core, src, web, personas, and start-web.cmd" width="900">
+
+*Diagram, not a file-manager screenshot. The file you need is `start-web.cmd` on Windows or `start-web.command` on macOS.*
+
+### Step 4: Double-click to start
+
+- **Windows**: double-click `start-web.cmd`.
+- **macOS**: double-click `start-web.command`. If macOS blocks it the first time, right-click it → **Open** → **Open** again.
+- **Linux**: open a terminal in that folder and run `./start-web.sh`.
+
+A black terminal window opens. Leave it open. After a second or two, your browser opens:
+
+```text
+http://127.0.0.1:4317
+```
+
+If it does not open automatically, paste that address into your browser. If the port is already in use, the window prints the next port (4318, 4319, …); use the address shown there.
+
+> If Windows shows "Windows protected your PC", click **More info** → **Run anyway**. The script only starts a local web server; it installs no drivers and changes no system settings.
+
+### Step 5: Paste your DeepSeek key once
+
+The first visit shows this page:
+
+<img src="docs/screenshots/05-setup.png" alt="First-run setup: paste a DeepSeek API key" width="520">
+
+1. Open <https://platform.deepseek.com/>, sign up or sign in.
+2. Find **API keys** → **Create API key**.
+3. Copy the string starting with `sk-`.
+4. Paste it into the page and click **保存，开始** (Save and start).
+
+The key you paste is stored only in `web-config.json` on this computer. It is sent to DeepSeek as your credential when she talks; it is not sent anywhere else. It is stored in plain text locally so the next launch can reuse it — do not share that file. Usage is billed at DeepSeek's official prices, so the account needs a little balance.
+
+**No key yet?** Close that page and double-click `start-web-demo.cmd` (macOS: `start-web-demo.command`). Demo mode is offline, free, and uses fixed lines. Every screenshot in this README was produced by it.
+
+### Step 6: Talk to her
+
+Type in the box at the bottom. **Enter** sends; **Shift + Enter** inserts a newline. The right-hand column changes as you talk: what she is doing right now, her mood, what she remembers.
+
+- **透视** (Trace): what she recalled this turn, whether her mood moved, what she wrote down, how long the reply took. It never shows the raw prompt.
+- **记忆** (Memory): every memory she kept, plus what she has forgotten.
+- **设置** (Settings): change model or persona, turn automatic memory off, clear the chat (it archives first; it does not delete outright).
+- The four small buttons above the composer: poke, head-pat, offer water, praise her.
+
+### Step 7: Stopping and restarting
+
+- Close the black terminal window to stop the server, or press `Ctrl + C` in it.
+- Closing only the browser does not stop the server; the next launch may report that the port is busy.
+- To use it again, double-click the same launcher. Chat and memories are still there.
+
+### Where the data lives, and how to back it up
+
+Windows:
+
+```text
+C:\Users\<you>\.dsh\plugins\dsh-serene\
+├── web-config.json          key and settings (do not share)
+└── personas\zhiyao\web\
+    ├── chat.jsonl           conversation
+    ├── traces.jsonl         one trace per turn
+    └── archive\             old files moved aside by "clear"
+```
+
+On macOS / Linux, replace the prefix with `~/.dsh/plugins/dsh-serene/`.
+
+To back up: stop the server, then copy the whole `dsh-serene` folder elsewhere. To restore, put it back as it was.
+
+### Troubleshooting
+
+| Symptom | Likely cause | What to do |
+| --- | --- | --- |
+| The black window flashes and closes | Node.js missing or too old | Install Node.js LTS (22.19+) and double-click again |
+| `'node' is not recognized` | Node.js not installed properly / not on PATH | Reinstall Node.js, reopen the folder |
+| Browser did not open | Default browser did not respond | Open `http://127.0.0.1:4317` manually |
+| Port already in use | A previous window is still running | Close the old window, or use the new port printed in the window |
+| Key rejected when saving | Incomplete/expired key, or no balance | Create a new key on the platform and check the balance |
+| Messages spin forever or network error | Cannot reach `api.deepseek.com` | Check network, proxy, or VPN; try again later |
+| macOS: "cannot be opened because the developer cannot be verified" | Gatekeeper | Right-click the file → Open → Open |
+| macOS: `Permission denied` on `.command` | Executable bit lost during extraction | In Terminal, type `chmod +x ` (with a trailing space), drag `start-web.command` into the window, press Enter; then double-click |
+| Broken layout / endless spinner | Chinese characters or spaces in the path, or an incomplete extraction | Move it to `D:\dsh-serene` and extract again |
+
+Still stuck? Photograph the error in the black window and open an **Issue** on the repository. Do not post your key.
+
+### What is on the page
+
+<img src="docs/screenshots/02-emotion.png" alt="This moment and mood: real time, season, six mood dimensions, and three layers" width="560">
+
+**This moment and mood.** "One evening, around nine, in the terminal, clearest at night" is not a hard-coded line: `core/life.js` computes her day from the real clock, and `core/almanac.js` computes the season and the part of the month. The six bars are PAD+ mood; you can switch between **primary / background / social**. They decay on their own and move a little when something lands.
+
+<img src="docs/screenshots/03-trace.png" alt="Trace: what was recalled, mood delta, what was written, and the style check" width="900">
+
+**Trace.** Every turn leaves a trace: which memory was recalled and with what score, how much mood moved before/after, what was written down, whether the style check found a problem, how many characters each prompt section took, and token/latency figures. It **does not store or display the raw prompt** — it is a bill of what happened, not surveillance.
+
+<img src="docs/screenshots/04-memory.png" alt="Memory: all entries, capacity, average clarity, and forgetting records" width="820">
+
+**Memory.** This is not the chat log. It is what she chose to keep because it might matter later. Entries are newest-first, with a kind and a clarity score; when capacity fills, the least valuable go first. Clearing the chat does not clear memory — the two buttons are separate.
+
+**Proactive lines and small actions.** While the page is open she may speak first after a while. She stays quiet from 23:00 to 08:00 and has a daily cap. Poke, head-pat, water, and praise all go through the same mood and memory machinery; they are not separate animations.
+
+All of it runs on the same `core/`:
+
+| What you see | What computes it |
+| --- | --- |
+| This moment, season, energy | `core/life.js`, `core/almanac.js` |
+| Six mood dimensions, layers, scars | `core/emotion.js` |
+| What she remembers / fails to remember | `core/recall.js`, `src/stores/memory-store.js` |
+| Proactive budget | `core/motivation.js` |
+| Style check | `core/style.js` |
+| The trace bill | `web/lib/runtime.mjs`, one record per turn |
+
+### How the web app relates to the DSH plugin
+
+- The web app is the **only part of this repo that calls a model itself**. It needs a DeepSeek key.
+- The DSH plugin still only computes state; it does not call a model or use the network. Inside DSH it hands state to the host model through tools.
+- Both share `core/` and `personas/`, but the web app keeps its conversation in its own `web/` subdirectory and does not read DSH session history.
+- The server listens on `127.0.0.1` only; other devices on the same Wi-Fi cannot reach it. It is not a public website.
+- If you only want the web app, you do not need to install DSH. To wire it into DSH, continue with the installation below.
+
+---
+
 ## What it does / what it doesn't
 
 | Does | Doesn't |
@@ -42,6 +203,8 @@ That chart is not drawn by hand: `node demo/timeline.mjs` runs ten days through 
 
 ## Installation
 
+> Only want the web app? The section above is enough. This section installs the plugin into DSH.
+
 Requires DSH `>= 0.2.1-rc.2` and Node `>= 22.19`.
 
 ```bash
@@ -49,13 +212,13 @@ Requires DSH `>= 0.2.1-rc.2` and Node `>= 22.19`.
 dsh plugin --profile web add dsh-serene
 
 # from GitHub (pins a tag, no npm involved)
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.3.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.5.0"
 
 # from a local directory (development)
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
-# from a tgz (grab dsh-serene-0.3.0.tgz from the Releases page)
-dsh plugin --profile web add ./dsh-serene-0.3.0.tgz
+# from a tgz (grab dsh-serene-0.5.0.tgz from the Releases page)
+dsh plugin --profile web add ./dsh-serene-0.5.0.tgz
 ```
 
 **Quit DSH completely before installing** — installation modifies the profile's `package.json` and `cordis.patch.yml`. Afterwards, confirm the plugin is in the config tree:
@@ -336,7 +499,10 @@ For the fuller structural description, see [`FRAMEWORK.md`](./FRAMEWORK.md).
 
 ```bash
 npm install          # installs devDependencies only (schemastery / dsh-tools)
-npm test             # node --test, 116 cases
+npm test             # node --test, 118 cases (including the web demo flow)
+npm run web          # start the web app locally
+npm run web:demo     # demo mode: offline, no key needed
+npm run shots        # regenerate the screenshots in docs/screenshots
 ```
 
 ```
@@ -365,9 +531,17 @@ src/prompt.js                   standing prompt: persona + right now + outside +
 src/opening.js                  first meeting happens once: pending → opened
 src/tools.js                    the sixteen tools (incl. the serene_status health check)
 src/index.js                    name / inject / Config / apply
+web/server.mjs                  web app: local HTTP, API, static files (the only model-calling shell)
+web/lib/runtime.mjs             wires core/ and stores/ into one conversation, writes traces
+web/lib/prompt.mjs              web prompt sections, chat rules, bubble splitting
+web/lib/model.mjs               DeepSeek /chat/completions client (retries, error mapping)
+web/lib/demo.mjs                demo mode: fixed lines, no network
+web/public/                     dependency-free frontend: index.html / app.js / style.css
+scripts/shots.mjs               deterministic README screenshots (Edge CDP)
+scripts/cdp.mjs                 a tiny CDP client; no Playwright
 ```
 
-There is no `fs`, no `Date.now()`, no network, and no randomness in `core/`. To check:
+There is no `fs`, no `Date.now()`, no network, and no randomness in `core/`. The web app is the only network-facing part of the repo. To check:
 
 ```bash
 grep -n "node:fs\|process.env\|fetch(" core/*.js   # should print nothing
@@ -381,7 +555,7 @@ so the same input always produces the same output — `test/recall-v2.test.js` p
 ## Relationship to other plugins
 
 - **`@furongjun1999/dsh-memory` (Lingshu)** — that one is working memory: tasks and facts. This plugin records relationships, and the two should stay separate: working memory has to be exact, while relational memory is supposed to fade.
-- **dsh-dafeiyu** — a desktop-pet frontend. This plugin is backend only and ships no UI; to drive a pet, read what `serene_state` returns and draw it yourself.
+- **dsh-dafeiyu** — a desktop-pet frontend. The DSH plugin itself is still backend only and injects no UI into the host; this repo also ships an optional standalone web app (the double-click page above). To drive a pet, read what `serene_state` returns and draw it yourself.
 
 ---
 

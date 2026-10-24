@@ -1,0 +1,6 @@
+# Windows 批处理必须保留 CRLF；否则 cmd.exe 解析括号块和 echo. 时会出错。
+*.cmd binary
+
+# macOS / Linux 启动脚本保持 LF。
+*.sh text eol=lf
+*.command text eol=lf

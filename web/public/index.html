@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>知遥</title>
+    <meta name="description" content="知遥 · 一个住在这台机器里的存在。单人格网页版，数据只存在本机。" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <svg class="sprite" aria-hidden="true" focusable="false">
+      <defs>
+        <radialGradient id="orb-bg" cx="34%" cy="28%" r="82%">
+          <stop offset="0%" stop-color="#2c6a63" />
+          <stop offset="46%" stop-color="#123039" />
+          <stop offset="100%" stop-color="#050d13" />
+        </radialGradient>
+        <linearGradient id="orb-wave" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#4b9d93" stop-opacity=".1" />
+          <stop offset="45%" stop-color="#c8f3e7" />
+          <stop offset="100%" stop-color="#6cc3b5" stop-opacity=".35" />
+        </linearGradient>
+        <radialGradient id="orb-core" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#f4fffb" />
+          <stop offset="55%" stop-color="#a9eadc" stop-opacity=".65" />
+          <stop offset="100%" stop-color="#a9eadc" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+
+      <symbol id="i-orb" viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="98" fill="url(#orb-bg)" />
+        <g fill="none" stroke="#a9eadc" stroke-linecap="round">
+          <circle cx="100" cy="100" r="86" stroke-opacity=".1" stroke-width="1" />
+          <circle cx="100" cy="100" r="68" stroke-opacity=".13" stroke-width="1" stroke-dasharray="2 7" />
+          <circle cx="100" cy="100" r="50" stroke-opacity=".1" stroke-width="1" />
+          <path d="M20 109c14-11 24-11 36 0s22 11 36 0 22-11 36 0 22 11 36 0" stroke="url(#orb-wave)" stroke-width="2.2" stroke-opacity=".9" />
+          <path d="M28 124c12-8 22-8 33 0s21 8 33 0 21-8 33 0 21 8 33 0" stroke="#8fe0d2" stroke-width="1.2" stroke-opacity=".32" />
+          <path d="M36 94c11-7 20-7 30 0s19 7 29 0 19-7 29 0 19 7 29 0" stroke="#8fe0d2" stroke-width="1" stroke-opacity=".16" />
+        </g>
+        <circle cx="100" cy="100" r="26" fill="url(#orb-core)" />
+        <circle cx="100" cy="100" r="3.2" fill="#effff9" />
+        <circle cx="100" cy="100" r="94" fill="none" stroke="#bff1e6" stroke-opacity=".16" stroke-width="1" />
+      </symbol>
+
+      <symbol id="i-chat" viewBox="0 0 24 24">
+        <path d="M4 6.6A2.6 2.6 0 0 1 6.6 4h10.8A2.6 2.6 0 0 1 20 6.6v6.8a2.6 2.6 0 0 1-2.6 2.6H10l-4.6 4v-4H6.6A2.6 2.6 0 0 1 4 13.4Z" />
+      </symbol>
+      <symbol id="i-memory" viewBox="0 0 24 24">
+        <path d="M5 5.2A1.2 1.2 0 0 1 6.2 4H18v16H6.2A1.2 1.2 0 0 1 5 18.8Z" />
+        <path d="M8.4 4v16M11.5 8h3.8M11.5 12h3.8" />
+      </symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24">
+        <path d="M2.6 12S6.2 6.2 12 6.2 21.4 12 21.4 12 17.8 17.8 12 17.8 2.6 12 2.6 12Z" />
+        <circle cx="12" cy="12" r="2.6" />
+      </symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24">
+        <path d="M4 7h9M17.5 7H20M15 4.4v5.2M4 17h3.2M11.5 17H20M7.6 14.4v5.2" />
+      </symbol>
+      <symbol id="i-send" viewBox="0 0 24 24">
+        <path d="M21 3 10.6 13.4M21 3l-6.7 18-3.7-7.6L3 9.7Z" />
+      </symbol>
+      <symbol id="i-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18" />
+      </symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24">
+        <path d="M12 3.2c.7 4.6 2.7 6.6 7.3 7.3-4.6.7-6.6 2.7-7.3 7.3-.7-4.6-2.7-6.6-7.3-7.3 4.6-.7 6.6-2.7 7.3-7.3Z" />
+      </symbol>
+      <symbol id="i-hand" viewBox="0 0 24 24">
+        <path d="M9 11V5.8a1.6 1.6 0 0 1 3.2 0V11M12.2 10.6V4.9a1.6 1.6 0 0 1 3.2 0v6.3M15.4 11.4V7a1.5 1.5 0 0 1 3 0v7.2c0 3.6-2.4 6.2-6 6.2-2.4 0-4.1-1-5.3-3L5 13.2c-.7-1.2-.2-2.3.7-2.7.9-.4 1.8 0 2.4 1L9 13" />
+      </symbol>
+      <symbol id="i-cup" viewBox="0 0 24 24">
+        <path d="M6 8h10v6.2a5 5 0 0 1-5 5 5 5 0 0 1-5-5Z" />
+        <path d="M16 9.4h1.4a2.4 2.4 0 0 1 0 4.8H16M4 21h14" />
+      </symbol>
+      <symbol id="i-poke" viewBox="0 0 24 24">
+        <path d="M9.4 11.4V6.2a1.6 1.6 0 0 1 3.2 0v5.2M12.6 11V7.4a1.6 1.6 0 0 1 3.2 0V13" />
+        <path d="M15.8 11.2 19 9.6a1.4 1.4 0 0 1 1.9 1.8l-2.6 5.2A6.4 6.4 0 0 1 12.6 20c-2.5 0-4-.9-5.3-2.7L4.6 13c-.7-1.1-.2-2.2.7-2.6.9-.4 1.8 0 2.4 1l1.7 2.8" />
+      </symbol>
+      <symbol id="i-star" viewBox="0 0 24 24">
+        <path d="m12 4 2.1 5.1 5.4.5-4.1 3.6 1.2 5.3L12 15.7 7.4 18.5l1.2-5.3-4.1-3.6 5.4-.5Z" />
+      </symbol>
+    </svg>
+
+    <div class="app" id="app">
+      <aside class="rail">
+        <div class="rail-mark" title="知遥">
+          <svg class="orb orb-sm"><use href="#i-orb" /></svg>
+        </div>
+        <nav class="rail-nav" aria-label="导航">
+          <button class="rail-btn is-active" data-view="chat" title="对话">
+            <svg><use href="#i-chat" /></svg><span>对话</span>
+          </button>
+          <button class="rail-btn" data-view="memory" title="记忆">
+            <svg><use href="#i-memory" /></svg><span>记忆</span>
+          </button>
+          <button class="rail-btn" data-view="trace" title="透视">
+            <svg><use href="#i-eye" /></svg><span>透视</span>
+          </button>
+          <button class="rail-btn" data-view="settings" title="设置">
+            <svg><use href="#i-settings" /></svg><span>设置</span>
+          </button>
+        </nav>
+        <div class="rail-foot">
+          <span class="demo-flag" id="demo-flag" hidden>演示</span>
+          <button class="rail-btn rail-help" data-view="help" title="怎么用">
+            <span class="q">?</span><span>说明</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="who">
+            <div class="who-orb"><svg class="orb orb-xs"><use href="#i-orb" /></svg></div>
+            <div class="who-text">
+              <h1 id="her-name">知遥</h1>
+              <p class="status"><span class="status-dot" id="status-dot"></span><span id="her-status">在 终端里</span></p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span class="clock" id="clock">--:--</span>
+            <button class="icon-btn panel-toggle" id="btn-panel" title="她">
+              <svg><use href="#i-spark" /></svg>
+            </button>
+            <button class="pill" id="btn-trace">透视</button>
+          </div>
+        </header>
+
+        <section class="chat" id="chat">
+          <div class="chat-inner" id="messages"></div>
+        </section>
+
+        <footer class="composer">
+          <div class="action-row" id="action-row"></div>
+          <div class="input-row">
+            <textarea id="input" rows="1" maxlength="2000" placeholder="和她说点什么……" aria-label="对她说的话"></textarea>
+            <button class="send" id="send" title="发送" aria-label="发送">
+              <svg><use href="#i-send" /></svg>
+            </button>
+          </div>
+          <div class="composer-hint">
+            <span>Enter 发送 · Shift + Enter 换行</span>
+            <span id="key-hint" class="key-hint"></span>
+          </div>
+        </footer>
+      </main>
+
+      <aside class="panel" id="panel">
+        <div class="panel-scroll" id="panel-content"></div>
+      </aside>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="overlay boot" id="boot">
+      <div class="boot-inner">
+        <svg class="orb orb-lg"><use href="#i-orb" /></svg>
+        <p class="boot-text" id="boot-text">她在醒过来</p>
+      </div>
+    </div>
+
+    <div class="overlay setup" id="setup" hidden>
+      <div class="setup-card">
+        <svg class="orb orb-md"><use href="#i-orb" /></svg>
+        <p class="eyebrow">第一次见面</p>
+        <h2>先给她一把钥匙</h2>
+        <p class="lede">
+          知遥用你自己的 DeepSeek API key 说话。key 只写在这台电脑上，不会发到任何别的地方。
+        </p>
+        <ol class="steps">
+          <li><b>1</b><span>打开 <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noreferrer">platform.deepseek.com</a>，登录。</span></li>
+          <li><b>2</b><span>点左边「API keys」→「创建 API key」。</span></li>
+          <li><b>3</b><span>复制以 <code>sk-</code> 开头的那一串，粘到下面。</span></li>
+        </ol>
+        <label class="field">
+          <span>API key</span>
+          <input id="setup-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+        </label>
+        <div class="setup-actions">
+          <button class="primary" id="setup-save">保存，开始</button>
+          <button class="ghost" id="setup-help">我没有 key</button>
+        </div>
+        <p class="tiny" id="setup-note">按 DeepSeek 官方价格计费，一次对话通常不到一分钱。</p>
+      </div>
+    </div>
+
+    <div class="overlay modal-overlay" id="modal" hidden>
+      <div class="modal" id="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <header class="modal-head">
+          <div>
+            <p class="eyebrow" id="modal-eyebrow"></p>
+            <h2 id="modal-title"></h2>
+          </div>
+          <button class="icon-btn" id="modal-close" aria-label="关闭"><svg><use href="#i-close" /></svg></button>
+        </header>
+        <div class="modal-body" id="modal-body"></div>
+      </div>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

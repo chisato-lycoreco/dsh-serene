@@ -7,6 +7,8 @@
 
 中文 | [English](./README.en.md)
 
+> **不装 DSH、只想聊天？** 直接看 [不懂代码也能双击用](#先看这个不懂代码也能双击用)。
+
 > 把「一个会记得你的角色」接进 [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/)。
 > 人格是数据，情绪是状态，记忆是文件——三者都可读、可改、可复现。
 
@@ -33,6 +35,163 @@
 
 ---
 
+## 先看这个：不懂代码，也能双击用
+
+> 这一节写给**不装 DSH、不写命令**的人。网页版是仓库附带的一个小页面：双击启动，浏览器打开，填一次自己的 DeepSeek key 就能聊天。人格、情绪、记忆仍然来自仓库里的 [`core/`](./core/)，不是另写一套。
+
+<img src="docs/screenshots/01-chat.png" alt="网页版主界面：左边是对话，右边是她的此刻、情绪和记忆" width="900">
+
+*截图来自演示模式（台词固定、不联网），不是任何人的真实聊天。*
+
+### 第 1 步：装 Node.js（只装一次）
+
+网页靠 Node.js 运行。它不是编程工具，安装时一路点“下一步”就行。
+
+1. 打开 <https://nodejs.org/>。
+2. 点绿色大按钮 **LTS**（长期支持版）。
+3. Windows 下载 `.msi`，Mac 下载 `.pkg`；双击安装，全部默认。
+4. 装完不用重启电脑，回到第 2 步。
+
+> 已经装过 Node.js 也建议看一眼版本：需要 **22.19 或更新**。启动脚本会自己检查，太旧会提示你。
+
+### 第 2 步：把仓库下载到电脑上
+
+1. 打开 <https://github.com/chisato-lycoreco/dsh-serene>。
+2. 点绿色的 **Code** 按钮 → **Download ZIP**。
+3. 不要只下载 README；要整个 ZIP。
+
+> 网络打不开 GitHub 时，去仓库的 **Releases** 页面下载对应版本的压缩包（`.zip` 或 `.tgz`），效果一样。
+
+### 第 3 步：解压到一个“干净”的路径
+
+把 ZIP 解压，得到 `dsh-serene` 文件夹。建议放在：
+
+```text
+D:\dsh-serene
+```
+
+不要放在桌面、OneDrive、`C:\Program Files`，也尽量不要让路径里有中文或空格——不是绝对不能跑，是出问题时最难查。
+
+<img src="docs/screenshots/06-launch.png" alt="解压后的文件夹示意图：core、src、web、personas，以及 start-web.cmd" width="900">
+
+*示意图：解压后文件夹里应该有这些文件。真正要用的是 `start-web.cmd`（Windows）或 `start-web.command`（Mac）。*
+
+### 第 4 步：双击启动
+
+- **Windows**：双击 `start-web.cmd`。
+- **macOS**：双击 `start-web.command`。第一次被系统拦下时，右键这个文件 → **打开** → 再点 **打开**。
+- **Linux**：在文件夹里打开终端，运行 `./start-web.sh`。
+
+会弹出一个黑色的命令窗口，别关它。等一两秒，浏览器会自动打开：
+
+```text
+http://127.0.0.1:4317
+```
+
+没自动打开，就手动把这个地址粘进浏览器。端口被占用时，窗口里会显示换成了 4318、4319……以窗口里那行为准。
+
+> Windows 弹出“Windows 已保护你的电脑”时，点 **更多信息** → **仍要运行**。这个脚本只在本机启动一个网页服务，不装驱动、不改系统设置。
+
+### 第 5 步：填一次 DeepSeek key
+
+第一次打开会看到这个页面：
+
+<img src="docs/screenshots/05-setup.png" alt="第一次见面的设置页：粘贴 DeepSeek API key" width="520">
+
+1. 打开 <https://platform.deepseek.com/>，注册或登录。
+2. 找到 **API keys** → **创建 API key**。
+3. 复制以 `sk-` 开头的那一串。
+4. 粘回网页，点 **保存，开始**。
+
+你粘进去的 key 只写在这台电脑的 `web-config.json` 里；聊天时作为身份凭证发给 DeepSeek，不会发给别处。它在本机是明文保存的，方便下次启动；不要把 `web-config.json` 发给别人。它按 DeepSeek 官方价格计费，账户里要先有一点余额。
+
+**没有 key 也能先看**：关掉这个页面，双击 `start-web-demo.cmd`（Mac 用 `start-web-demo.command`）。演示模式不联网、不花钱，台词是固定的；README 里的截图都是它跑出来的。
+
+### 第 6 步：开始说话
+
+在底部输入框打字，按 **Enter** 发送，**Shift + Enter** 换行。右边那一栏会随着聊天变化：她此刻在做什么、情绪、记得的事。
+
+- 点 **透视**：看这一轮她想起了什么、情绪动没动、写下了什么、回复用了多久。它不显示 prompt 原文。
+- 点 **记忆**：看她记住的全部条目，以及哪些已经忘了。
+- 点 **设置**：换模型、换人格、关掉自动记忆、清空聊天（会先归档，不直接删）。
+- 输入框上方四个小按钮：戳一戳、摸头、递水、夸她一句。
+
+### 第 7 步：怎么关，下次怎么开
+
+- 关掉那个黑色命令窗口，服务就停了；在窗口里按 `Ctrl + C` 也行。
+- 只关浏览器不算关服务，下次可能提示端口被占用。
+- 下次使用：再双击同一个启动文件。聊天和记忆都在，不会从头开始。
+
+### 数据在哪，怎么备份
+
+Windows：
+
+```text
+C:\Users\<你的用户名>\.dsh\plugins\dsh-serene\
+├── web-config.json          key 和设置（别发给别人）
+└── personas\zhiyao\web\
+    ├── chat.jsonl           聊天记录
+    ├── traces.jsonl         每一轮的“透视”
+    └── archive\             清空时归档的旧文件
+```
+
+macOS / Linux 把前面换成 `~/.dsh/plugins/dsh-serene/`。
+
+备份：先关掉黑色窗口，把整个 `dsh-serene` 文件夹复制到别处。恢复时原样放回。
+
+### 常见问题
+
+| 现象 | 多半是 | 怎么办 |
+| --- | --- | --- |
+| 双击后黑窗口一闪就没了 | 没装 Node.js，或版本太旧 | 装 Node.js LTS（22.19+），再双击 |
+| 提示 `'node' 不是内部或外部命令` | Node.js 没装好 / 没进 PATH | 重装 Node.js，装完重新打开文件夹 |
+| 浏览器没有自动打开 | 默认浏览器没响应 | 手动访问 `http://127.0.0.1:4317` |
+| 提示端口被占用 | 上一次的窗口还开着 | 关掉旧窗口；或按窗口提示的新端口访问 |
+| 保存 key 时提示被拒绝 | key 复制不完整 / 已失效 / 没余额 | 回开放平台重新建一个，确认余额 |
+| 发消息一直转圈或报网络错误 | 连不上 `api.deepseek.com` | 检查网络、代理或 VPN，稍后再试 |
+| Mac 提示“无法打开，因为无法验证开发者” | 系统安全拦截 | 右键文件 → 打开 → 打开 |
+| Mac 双击 `.command` 提示 Permission denied | 解压后执行权限丢了 | 打开“终端”，输入 `chmod +x `（后面有空格），把 `start-web.command` 拖进去，回车；再双击 |
+| 页面样式错乱 / 一直转圈 | 路径里有中文、空格，或文件没解压完整 | 移到 `D:\dsh-serene` 重新解压 |
+
+还不行，把黑窗口里的报错拍照发到仓库 **Issues**；不要发 key。
+
+### 页面里有什么
+
+<img src="docs/screenshots/02-emotion.png" alt="此刻与情绪：真实时间、季节、六维情绪和三层切换" width="560">
+
+**此刻与情绪。** “某个晚上九点多、在终端里、夜里最清醒”不是写死的台词：`core/life.js` 按真实时间算她的一天，`core/almanac.js` 算季节和旬。下面六条是 PAD+ 情绪，能切“此刻 / 底色 / 关系”三层；它们会自己衰减，也会因为一句话动一下。
+
+<img src="docs/screenshots/03-trace.png" alt="透视：这一轮想起了什么、情绪变化、写下了什么、表达自检" width="900">
+
+**透视。** 每一轮对话后留一份 trace：召回了哪条记忆、相关度多少、情绪前后差多少、这一轮写下了什么、表达自检有没有问题、prompt 各段占多少字、用了多少 token。它**不保存也不显示 prompt 原文**，所以不是监控，是一张“她这一轮怎么想的”账单。
+
+<img src="docs/screenshots/04-memory.png" alt="记忆：全部条目、容量、平均清晰度和遗忘记录" width="820">
+
+**记忆。** 不是聊天记录，是她自己挑出来觉得以后用得上的事。列表按时间倒序，标了类型和清晰度；容量满了会先忘不重要的。清空聊天不会清掉记忆，两个按钮是分开的。
+
+**主动与小动作。** 页面开着时，她可能过一阵自己开口；夜里 23:00–08:00 不打扰，每天有次数上限。戳一戳、摸头、递水、夸她一句都会走同一套情绪和记忆，不是独立的小动画。
+
+这些功能背后是同一套 `core/`：
+
+| 你看到的 | 背后在算什么 |
+| --- | --- |
+| 此刻、季节、精力 | `core/life.js`、`core/almanac.js` |
+| 六维情绪、底色、关系、疤 | `core/emotion.js` |
+| 她记得 / 想不起来 | `core/recall.js`、`src/stores/memory-store.js` |
+| 主动开口的预算 | `core/motivation.js` |
+| 表达自检 | `core/style.js` |
+| 透视里的账 | `web/lib/runtime.mjs` 每轮写一条 trace |
+
+### 网页版和 DSH 插件是什么关系
+
+- 网页版是仓库里**唯一会自己调用模型**的部分；它需要一个 DeepSeek key。
+- DSH 插件本体仍然只算状态、不调模型、不联网；它在 DSH 里通过工具把状态交给宿主模型。
+- 两者共用 `core/` 和 `personas/`，但网页版的聊天存在自己的 `web/` 子目录，不读 DSH 的会话记录。
+- 服务只监听 `127.0.0.1`，同一 Wi-Fi 下的其他设备也访问不到；它不是一个对外网站。
+- 只想用网页版，不需要安装 DSH；想把它接进 DSH，再看下面的安装。
+
+---
+
 ## 它做什么 / 不做什么
 
 | 做 | 不做 |
@@ -47,6 +206,8 @@
 
 ## 安装
 
+> 只想用网页版，上一节就够了；这一节是把插件装进 DSH。
+
 要求：DSH `>= 0.2.1-rc.2`，Node `>= 22.19`。
 
 ```bash
@@ -54,13 +215,13 @@
 dsh plugin --profile web add dsh-serene
 
 # 从 GitHub 装（跟着 tag，不经过 npm）
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.3.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.5.0"
 
 # 从本地目录装（开发时）
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
-# 从 tgz 装（去 Release 页面下 dsh-serene-0.3.0.tgz）
-dsh plugin --profile web add ./dsh-serene-0.3.0.tgz
+# 从 tgz 装（去 Release 页面下 dsh-serene-0.5.0.tgz）
+dsh plugin --profile web add ./dsh-serene-0.5.0.tgz
 ```
 
 安装前**先完全退出 DSH**（安装会改 profile 的 `package.json` 和 `cordis.patch.yml`）。
@@ -371,7 +532,10 @@ personas/zhiyao/
 
 ```bash
 npm install          # 只装 devDependencies（schemastery / dsh-tools）
-npm test             # node --test，116 个用例
+npm test             # node --test，118 个用例（含网页版的演示流程）
+npm run web          # 本机启动网页版
+npm run web:demo     # 演示模式，不联网、不需要 key
+npm run shots        # 重新生成 docs/screenshots 里的截图
 ```
 
 ```
@@ -400,6 +564,14 @@ src/prompt.js             常驻 prompt 段：人格 +【此刻】+【外面】+
 src/opening.js            首启只说一次：pending → opened
 src/tools.js              16 个工具（含 serene_status 诊断）
 src/index.js              name / inject / Config / apply
+web/server.mjs            网页版：本地 HTTP、API、静态文件（唯一调模型的外壳）
+web/lib/runtime.mjs       把 core/ 和 stores/ 接成一局对话，并写 trace
+web/lib/prompt.mjs        网页版的 prompt 段落、聊天约定、拆气泡
+web/lib/model.mjs         DeepSeek /chat/completions 客户端（重试、错误映射）
+web/lib/demo.mjs          演示模式：固定台词，不联网
+web/public/               无框架前端：index.html / app.js / style.css
+scripts/shots.mjs         确定性生成 README 里的截图（Edge CDP）
+scripts/cdp.mjs           很小的 CDP 客户端，不依赖 Playwright
 ```
 
 `core/` 里没有 `fs`、没有 `Date.now()`、没有网络、没有随机数。想验证：
@@ -417,8 +589,9 @@ grep -n "node:fs\|process.env\|fetch(" core/*.js   # 应该没有输出
 
 - **灵枢（`@furongjun1999/dsh-memory`）**：那是「工作记忆」，记的是任务和事实。
   这个插件记的是「关系」，两者不要合并——工作记忆要准，关系记忆本来就会褪色。
-- **dsh-dafeiyu**：桌宠形态的前端。这个插件是纯后端，没有 UI；想接桌宠，
-  读 `serene_state` 的返回值自己画即可。
+- **dsh-dafeiyu**：桌宠形态的前端。DSH 插件本体仍然是纯后端，不往宿主里塞 UI；
+  仓库另外附带一个可选的独立网页版（就是上面那个双击启动的页面）。
+  想接桌宠，读 `serene_state` 的返回值自己画即可。
 
 ---
 
