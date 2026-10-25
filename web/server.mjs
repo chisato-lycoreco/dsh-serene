@@ -30,6 +30,7 @@ import {
 } from "./lib/config.mjs";
 import { complete, ModelError } from "./lib/model.mjs";
 import { createDemoComplete, seedDemo } from "./lib/demo.mjs";
+import { checkPortBoundary } from "./lib/port-guard.mjs";
 import { HttpError, SereneWeb } from "./lib/runtime.mjs";
 
 const PUBLIC_DIR = join(packageRoot, "web", "public");
@@ -79,9 +80,9 @@ if (demo && !existsSync(join(runtime.dataDir, "chat.jsonl")) && runtime.memory.s
 const server = createServer(async (req, res) => {
   const startedAt = Date.now();
   try {
-    if (!isLocalHost(req)) {
-      return sendJson(res, 403, { ok: false, error: "只接受本机访问。" });
-    }
+    // 先过端口边界，再过路由：Host / Origin / Content-Type 三验。
+    const boundary = checkPortBoundary(req, server.address()?.port ?? 0);
+    if (boundary) return sendJson(res, boundary.status, { ok: false, error: boundary.error });
     const url = new URL(req.url || "/", `http://${req.headers.host || "127.0.0.1"}`);
     if (url.pathname.startsWith("/api/")) {
       return await handleApi(req, res, url);
@@ -145,7 +146,6 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, { ok: true, version: VERSION, demo, persona: runtime.persona.id });
   }
   if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "不支持的方法。" });
-  if (!isSameOrigin(req)) return sendJson(res, 403, { ok: false, error: "只接受这个页面的请求。" });
 
   const body = await readJson(req);
 
@@ -426,24 +426,6 @@ function readJson(req) {
     });
     req.on("error", reject);
   });
-}
-
-function isLocalHost(req) {
-  const host = String(req.headers.host ?? "").toLowerCase();
-  const name = host.replace(/:\d+$/, "");
-  return name === "127.0.0.1" || name === "localhost" || name === "[::1]" || name === "::1";
-}
-
-/** 跨站页面不能替用户点「发送」，否则任何网页都能烧她的额度。 */
-function isSameOrigin(req) {
-  const origin = String(req.headers.origin ?? "");
-  if (!origin) return true; // curl / 本机脚本没有 Origin；只绑本机，可以接受。
-  try {
-    const parsed = new URL(origin);
-    return parsed.host === String(req.headers.host ?? "");
-  } catch {
-    return false;
-  }
 }
 
 function parseArgs(argv) {

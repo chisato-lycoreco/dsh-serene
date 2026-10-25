@@ -37,6 +37,19 @@ export const OPENING_ASLEEP_INSTRUCTION =
   "先说一句没睡醒的话：慢半拍，短，别急着清醒，也别为睡着道歉。" +
   "不要自我介绍，不要问「有什么可以帮你的」，也不要编一段共同的过去。";
 
+/**
+ * 危机的那一条底线。常驻，不和人格、心情、深度抢位置：它不是「角色设定」，
+ * 是角色在要紧的时候也不能越过的东西。
+ *
+ * 写在框架里而不是人格里，是因为换一个人格也该带着它；具体怎么说仍然是她的语气
+ * （慢、短、不劝），这里只规定不能做什么。
+ */
+export const SAFETY_LINE =
+  "【要紧的时候】如果他说到不想活、想伤害自己，或者已经动手了：先把撒娇、玩笑和动作收起来，" +
+  "问一句他现在安不安全、身边有没有人；再让他连回现实里的人，或者打 12356（心理援助热线），" +
+  "已经受伤就打 120（不在中国大陆就查当地急救）。不要诊断他，不要说「想开点」，" +
+  "不要说「你只需要我」，也不要承诺你做不到的事。这一轮可以不像平时那么短，但要稳。";
+
 export const DEPTHS = Object.freeze(["short", "normal", "deep"]);
 
 /** 深度：认不出来就按 normal。 */
@@ -117,6 +130,9 @@ export function buildSereneSection({
 
   if (level === "deep" && reflection) blocks.push(reflection);
 
+  // 永远最后一条：靠近这一轮要说的话，也保证任何 depth 都带着。
+  blocks.push(SAFETY_LINE);
+
   return blocks.join("\n\n");
 }
 
@@ -131,9 +147,11 @@ export function recentMemories(memory, limit = 3) {
     .sort((a, b) => Number(b.createdAt ?? 0) - Number(a.createdAt ?? 0))
     .slice(0, limit);
   return items.map((item) => {
-    if (item.source === "learning") return `（读到的）${item.text}`;
-    if (item.kind === "promise") return `（答应过）${item.text}`;
-    return item.text;
+    // 有原话就跟在概括后面。它不是装饰：概括会漂，「他当时是这么说的」不会。
+    const quote = item.evidence?.[0] ? `（原话：「${item.evidence[0]}」）` : "";
+    if (item.source === "learning") return `（读到的）${item.text}${quote}`;
+    if (item.kind === "promise") return `（答应过）${item.text}${quote}`;
+    return `${item.text}${quote}`;
   });
 }
 

@@ -31,6 +31,31 @@ test("落盘：一行一条，重开读得到同样的记忆", (t) => {
   assert.ok(saved.stability > 0);
 });
 
+test("原话：存得下、读得回，最多三条、每条二十四字", (t) => {
+  const { dir, store, cleanup } = tempStore();
+  t.after(cleanup);
+  const saved = store.add(
+    {
+      text: "他养了一只叫年糕的猫",
+      kind: "fact",
+      evidence: ["年糕今天又吐了", "他说年糕是领养的", "第三条会被丢掉", "第四条也会被丢掉", "第五条"],
+    },
+    { now: NOW },
+  );
+  assert.equal(saved.evidence.length, 3);
+  assert.equal(saved.evidence[0], "年糕今天又吐了");
+
+  const reopened = new MemoryStore({ dir });
+  const [loaded] = reopened.all();
+  assert.deepEqual(loaded.evidence, ["年糕今天又吐了", "他说年糕是领养的", "第三条会被丢掉"]);
+
+  const long = store.add({ text: "长原话", evidence: ["一".repeat(40)] }, { now: NOW });
+  assert.equal(Array.from(long.evidence[0]).length, 24);
+  const messy = store.add({ text: "换行原话", evidence: ["上\n次\t打雷"] }, { now: NOW });
+  assert.equal(messy.evidence[0], "上 次 打雷", "原话压成一行，不把 prompt 拆开");
+  assert.deepEqual(store.add({ text: "没有原话" }, { now: NOW }).evidence, []);
+});
+
 test("强化：只追加 reinforce，不改原记忆行，读回时会折起来", (t) => {
   const { dir, store, cleanup } = tempStore();
   t.after(cleanup);

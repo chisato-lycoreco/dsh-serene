@@ -58,12 +58,13 @@ test("入口契约：name / inject / Config / apply 都在", () => {
   assert.equal(typeof apply, "function");
 });
 
-test("挂载后注册 16 个工具，名字都带前缀", (t) => {
+test("挂载后注册 17 个工具，名字都带前缀", (t) => {
   const { ctx, tools } = fakeContext();
   apply(ctx, { dataDir: tempDir(t) });
-  assert.equal(tools.size, 16);
+  assert.equal(tools.size, 17);
   for (const toolName of [
     "serene_style",
+    "serene_crisis",
     "serene_context",
     "serene_weather",
     "serene_belief",
@@ -116,6 +117,25 @@ test("工具能跑：记事件、回忆、读状态", async (t) => {
   assert.ok(parsed.layers.primary.pleasure > 60);
 
   await assert.rejects(() => event.execute({ kind: "not_a_kind" }, {}), /没有这种事件/);
+});
+
+test("serene_crisis：高危给底线，口头禅不误伤", async (t) => {
+  const { ctx, tools } = fakeContext();
+  apply(ctx, { dataDir: tempDir(t) });
+  const crisis = tools.get("serene_crisis");
+  assert.match(await crisis.execute({ message: "我不想活了" }, {}), /12356/);
+  assert.match(await crisis.execute({ message: "今天笑死我了" }, {}), /没有听出/);
+  assert.match(await crisis.execute({ message: "我快撑不下去了" }, {}), /别急着劝/);
+});
+
+test("serene_remember：原话能存下，再回忆时带得出来", async (t) => {
+  const { ctx, tools } = fakeContext();
+  apply(ctx, { dataDir: tempDir(t) });
+  await tools
+    .get("serene_remember")
+    .execute({ text: "他养了一只叫年糕的猫", evidence: ["年糕今天又吐了"], importance: 0.8 }, {});
+  const found = await tools.get("serene_recall").execute({ query: "年糕" }, {});
+  assert.match(found, /原话：「年糕今天又吐了」/);
 });
 
 test("新工具能跑：问主动、记账、强化记忆", async (t) => {

@@ -9,12 +9,13 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { almanacAt, almanacBlock, weatherLine } from "../core/almanac.js";
 import { beliefsLine, mergeBeliefs } from "../core/beliefs.js";
+import { CRISIS_BLOCK, detectCrisis } from "../core/crisis.js";
 import { EVENT_EFFECTS } from "../core/emotion.js";
 import { inNightWindow, reflect } from "../core/introspect.js";
 import { lifeAt, lifeBlock } from "../core/life.js";
 import { mentalAt, mentalLine } from "../core/mental.js";
 import { DIMENSIONS, DIMENSION_KEYS, profileLine } from "../core/profile.js";
-import { MEMORY_KINDS, MAX_TEXT_CHARS } from "../core/recall.js";
+import { MEMORY_KINDS, MAX_EVIDENCE_CHARS, MAX_TEXT_CHARS } from "../core/recall.js";
 import { PROACTIVE, describeDecision } from "../core/motivation.js";
 import { checkStyle } from "../core/style.js";
 import { CONDITIONS } from "../core/weather.js";
@@ -77,6 +78,26 @@ export function registerTools(
         const result = checkStyle(args.text);
         if (result.ok) return "像她说的。发吧。";
         return result.issues.map((issue) => `- ${issue.message}`).join("\n");
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: "serene_crisis",
+      description:
+        "他这句话里有没有不想活、想伤害自己的意思。高危时返回这一轮必须照做的要求；这不是诊断，也不替代现实里的帮助。拿不准就按真的处理。",
+      parameters: {
+        message: { type: "string", required: true, description: "他刚说的那句话，原文，不要先改写。" },
+      },
+      output: stringOutput,
+      async execute(args) {
+        const result = detectCrisis(args.message);
+        if (result.level === "high") return CRISIS_BLOCK;
+        if (result.level === "watch") {
+          return "听出很重的累，但没有说要伤害自己。别急着劝，也别当玩笑：先接住，再问一句今天怎么了。";
+        }
+        return "没有听出这一层。";
       },
     }),
   );
@@ -341,6 +362,10 @@ export function registerTools(
           description: `记忆类型，可选：${MEMORY_KINDS.join(" / ")}。默认 fact。`,
         },
         tags: { type: "array", description: "标签，比如 [\"重要\", \"约定\"]。" },
+        evidence: {
+          type: "array",
+          description: `让你记下这条的那句原话，最多 3 条、每条不超过 ${MAX_EVIDENCE_CHARS} 字。没有就不传。`,
+        },
         importance: { type: "number", description: "重要度 0~1，默认 0.5。" },
       },
       output: stringOutput,
@@ -361,6 +386,7 @@ export function registerTools(
           text,
           kind,
           tags: args.tags,
+          evidence: args.evidence,
           importance: args.importance,
           source: "tool",
         });
@@ -393,7 +419,8 @@ export function registerTools(
           .map((item, index) => {
             const when = new Date(Number(item.updatedAt ?? item.createdAt ?? Date.now())).toISOString().slice(0, 10);
             const tags = item.tags?.length ? ` #${item.tags.join(" #")}` : "";
-            return `${index + 1}. [${when}｜${item.kind ?? "fact"}｜${item.score}] ${item.text}${tags}（id: ${item.id}）`;
+            const quote = item.evidence?.length ? ` 原话：「${item.evidence[0]}」` : "";
+            return `${index + 1}. [${when}｜${item.kind ?? "fact"}｜${item.score}] ${item.text}${tags}${quote}（id: ${item.id}）`;
           })
           .join("\n");
       },

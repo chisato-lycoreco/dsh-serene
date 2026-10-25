@@ -67,6 +67,31 @@ test("读到的、答应过的，和对方亲口说的分开标", () => {
   assert.match(text, /【你记着的】（读到的）《海边的卡夫卡》/);
 });
 
+test("要紧的底线每一档都在：short 也不省，且不抢人格的位置", () => {
+  for (const depth of ["short", "normal", "deep"]) {
+    const text = buildSereneSection({ persona: zhiyao, now, depth });
+    assert.match(text, /【要紧的时候】/, depth);
+    assert.match(text, /12356/, depth);
+    assert.ok(text.startsWith("你叫知遥"), "底线在最后，不顶掉人格");
+    assert.ok(text.trimEnd().endsWith("这一轮可以不像平时那么短，但要稳。"), depth);
+  }
+});
+
+test("原话跟在概括后面，只带第一句", () => {
+  const memory = {
+    all: () => [
+      { text: "他怕打雷", evidence: ["上次打雷他缩在墙角"], createdAt: 2 },
+      { text: "十点前回来", kind: "promise", evidence: ["我十点前肯定回来"], createdAt: 1 },
+    ],
+  };
+  assert.deepEqual(recentMemories(memory, 2), [
+    "他怕打雷（原话：「上次打雷他缩在墙角」）",
+    "（答应过）十点前回来（原话：「我十点前肯定回来」）",
+  ]);
+  const text = buildSereneSection({ persona: zhiyao, now, memory });
+  assert.match(text, /【你记着的】他怕打雷（原话：「上次打雷他缩在墙角」）/);
+});
+
 test("深度只认 short / normal / deep", () => {
   assert.equal(normalizeDepth("short"), "short");
   assert.equal(normalizeDepth("deep"), "deep");

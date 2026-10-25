@@ -10,6 +10,7 @@
  */
 
 import { almanacAt, almanacBlock } from "../../core/almanac.js";
+import { CRISIS_BLOCK } from "../../core/crisis.js";
 import { lifeAt, lifeBlock } from "../../core/life.js";
 import { mentalAt, mentalLine } from "../../core/mental.js";
 import { buildSereneSection } from "../../src/prompt.js";
@@ -52,6 +53,7 @@ export function buildChatSystem({
   now = Date.now(),
   depth = "normal",
   asleep = false,
+  crisis = null,
 } = {}) {
   const life = safe(() => lifeAt(now, { seed: persona.id, routine: persona.routine }), null);
   const sections = [];
@@ -86,7 +88,12 @@ export function buildChatSystem({
 
   const remembered = Array.isArray(recall) ? recall.filter((item) => item?.text) : [];
   if (remembered.length) {
-    const lines = remembered.map((item) => `- ${item.text}`).join("\n");
+    const lines = remembered
+      .map((item) => {
+        const quote = item.evidence?.[0] ? `（原话：「${item.evidence[0]}」）` : "";
+        return `- ${item.text}${quote}`;
+      })
+      .join("\n");
     push(
       sections,
       "这一轮想起来的",
@@ -96,6 +103,8 @@ export function buildChatSystem({
 
   push(sections, "聊天约定", CHAT_RULES);
   if (asleep) push(sections, "她在睡", ASLEEP_RULE);
+  // 危机那一轮放在最后：这一轮所有别的约定（短、不解释、不主动提设定）都要往后让。
+  if (crisis?.level === "high") push(sections, "这一轮的安全底线", CRISIS_BLOCK);
 
   return { system: sections.map((section) => section.text).join("\n\n"), sections: sections.map(strip) };
 }
@@ -144,8 +153,9 @@ export function buildExtractionMessages({ userText, reply, now = Date.now() }) {
     `今天是 ${date}。`,
     "读下面这一轮对话，判断有什么值得她以后记住。只记对方亲口说过的、以后可能用得上的事。",
     "不要记寒暄、不要记她自己的话、不要猜、不要总结情绪。没有就返回空数组。",
+    "每一条记忆尽量带一句他当时的原话（evidence），一字不改，不超过 24 字；没有原话就不带。",
     "严格返回一个 JSON 对象，不要 Markdown、不要注释：",
-    '{"memories":[{"text":"一句话，40字以内","kind":"fact|preference|moment|promise","importance":0.1}],',
+    '{"memories":[{"text":"一句话，40字以内","kind":"fact|preference|moment|promise","importance":0.1,"evidence":["他当时的原话，24字以内"]}],',
     '"profile":[{"dimension":"rhythm|taste|matters|talk|mood|weather","value":"一句观察，30字以内"}],',
     '"beliefs":[{"topic":"她的看法，20字以内","stance":-1,"weight":0.5}]}',
     "memories 最多 2 条；profile 最多 1 条；beliefs 最多 1 条。importance / weight 在 0.1–1 之间。",

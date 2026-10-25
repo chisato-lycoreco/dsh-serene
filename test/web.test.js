@@ -198,6 +198,28 @@ test("网页版：演示模式完整走一轮，接口不泄露 key", async (t) 
   });
   assert.equal(hostileOrigin.status, 403);
 
+  const wrongPort = await request(port, "/api/state", { headers: { host: `127.0.0.1:${port + 1}` } });
+  assert.equal(wrongPort.status, 403);
+
+  const formPost = await request(port, "/api/say", {
+    method: "POST",
+    headers: { "content-type": "text/plain" },
+    body: JSON.stringify({ text: "你好" }),
+  });
+  assert.equal(formPost.status, 415);
+
+  const crisisTurn = (
+    await request(port, "/api/say", {
+      method: "POST",
+      body: JSON.stringify({ text: "我今晚不想活了。" }),
+    })
+  ).json;
+  assert.equal(crisisTurn.ok, true);
+  assert.equal(crisisTurn.trace.crisis.level, "high");
+  assert.match(crisisTurn.trace.extractionSkipped, /危机/);
+  assert.equal(crisisTurn.trace.wrote, null, "危机轮不写记忆");
+  assert.ok(crisisTurn.trace.prompt.sections.some((section) => section.name === "这一轮的安全底线"));
+
   const traversal = await request(port, "/..%2Fpackage.json");
   assert.ok([403, 404].includes(traversal.status));
   assert.doesNotMatch(traversal.text, /"name": "dsh-serene"/);

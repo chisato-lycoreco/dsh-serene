@@ -16,6 +16,7 @@ import { randomUUID } from "node:crypto";
 
 import { almanacAt } from "../../core/almanac.js";
 import { mergeBeliefs } from "../../core/beliefs.js";
+import { detectCrisis } from "../../core/crisis.js";
 import { describeDecision, PROACTIVE } from "../../core/motivation.js";
 import { energyAt, lifeAt, timePhrase } from "../../core/life.js";
 import { mentalAt, mentalLine } from "../../core/mental.js";
@@ -167,6 +168,8 @@ export class SereneWeb {
   async #say(rawText) {
     const text = String(rawText ?? "").trim().slice(0, MAX_USER_CHARS);
     if (!text) throw new HttpError(400, "说点什么再发。", "EMPTY");
+    // 先认这一句要不要按危机接。它只改这一轮的 prompt 和长度，不改人格、不改记忆。
+    const crisis = detectCrisis(text);
     const now = Date.now();
     const life = this.#life(now);
     const before = this.#emotionSnapshot(now, life);
@@ -184,18 +187,25 @@ export class SereneWeb {
       now,
       depth: this.config.depth,
       asleep: life.asleep,
+      crisis,
     });
 
     const history = this.#historyForModel();
     const reply = await this.llm({
       messages: [{ role: "system", content: system.system }, ...history, { role: "user", content: text }],
-      maxTokens: 300,
-      temperature: 1.05,
+      // 危机那一轮允许长一点：三到六句，不是平时的「一两句」。
+      maxTokens: crisis.level === "high" ? 460 : 300,
+      temperature: crisis.level === "high" ? 0.8 : 1.05,
       timeoutMs: 90_000,
     });
-    const bubbles = splitBubbles(reply.text).slice(0, 2);
+    const bubbles = splitBubbles(reply.text).slice(0, crisis.level === "high" ? 3 : 2);
     const joined = bubbles.join("\n");
-    const style = checkStyle(joined, { maxChars: 120, maxSentences: 3, maxQuestions: 1 });
+    const style = checkStyle(
+      joined,
+      crisis.level === "high"
+        ? { maxChars: 280, maxSentences: 6, maxQuestions: 1 }
+        : { maxChars: 120, maxSentences: 3, maxQuestions: 1 },
+    );
 
     this.emotion.afterReply({ text: joined, lastKind: classified?.kind ?? "", now });
     const userMessage = this.#append({ role: "user", text, at: now, kind: "say" });
@@ -205,7 +215,12 @@ export class SereneWeb {
     if (this.opening?.pending()) this.opening.markOpened(now);
     this.#invalidateDecision();
 
-    const extraction = await this.#remember({ userText: text, reply: joined, now });
+    // 危机这一轮不抽取记忆：把「他说过不想活」写成一条长期记忆，以后每次召回都可能
+    // 把它带回对话里，既不安全也不体面。
+    const extraction =
+      crisis.level === "high"
+        ? { skipped: "危机轮不写入记忆" }
+        : await this.#remember({ userText: text, reply: joined, now });
     const trace = this.#trace({
       kind: "say",
       at: now,
@@ -215,6 +230,7 @@ export class SereneWeb {
       reply,
       style,
       classified,
+      crisis,
       before,
       after,
       recall,
@@ -537,6 +553,7 @@ export class SereneWeb {
           createdAt: item.createdAt,
           stability: item.stability,
           recallCount: item.recallCount,
+          evidence: Array.isArray(item.evidence) ? item.evidence : [],
         })),
       forgotten: this.memory.forgotten({ limit: 8 }).map((item) => ({ id: item.id, at: item.at, reason: item.reason })),
     };
@@ -569,7 +586,10 @@ export class SereneWeb {
       if (text.length < 2 || existing.has(text)) continue;
       const kind = MEMORY_KINDS.includes(item?.kind) ? item.kind : "fact";
       const importance = clamp(Number(item?.importance), 0.1, 1, 0.5);
-      const memory = this.memory.add({ text, kind, importance, source: "web", createdAt: now }, { now });
+      const memory = this.memory.add(
+        { text, kind, evidence: item?.evidence, importance, source: "web", createdAt: now },
+        { now },
+      );
       if (memory) {
         existing.add(text);
         wrote.memories.push({ id: memory.id, text, kind });
@@ -685,7 +705,7 @@ export class SereneWeb {
     return messages.slice(-CHAT_KEEP);
   }
 
-  #trace({ kind, at, userText = "", bubbles, system, reply, style, classified = null, before, after, recall, extraction, decision = null, note = "" }) {
+  #trace({ kind, at, userText = "", bubbles, system, reply, style, classified = null, crisis = null, before, after, recall, extraction, decision = null, note = "" }) {
     const trace = {
       id: `t_${at.toString(36)}_${randomUUID().slice(0, 6)}`,
       kind,
@@ -707,15 +727,19 @@ export class SereneWeb {
         delta: deltaEmotion(before, after),
       },
       classified,
+      crisis,
       recall: (recall ?? []).map((item) => ({
         id: item.id,
         text: item.text,
         score: item.score,
         cue: item.cue,
         retention: item.retention,
+        anchored: item.anchored === true,
+        evidence: Array.isArray(item.evidence) ? item.evidence : [],
       })),
       wrote: extraction?.wrote ?? null,
       extractionError: extraction?.error ?? null,
+      extractionSkipped: extraction?.skipped ?? null,
       style,
       decision: decision
         ? { act: decision.act, reason: decision.reason, why: decision.why, substitute: decision.substitute ?? null }

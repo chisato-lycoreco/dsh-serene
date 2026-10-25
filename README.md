@@ -284,13 +284,13 @@ dsh plugin --profile web add dsh-serene
 dsh plugin --profile web add dsh-serene
 
 # 从 GitHub 装（跟着 tag，不经过 npm）
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.5.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
 
 # 从本地目录装（开发时）
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
-# 从 tgz 装（去 Release 页面下 dsh-serene-0.5.0.tgz）
-dsh plugin --profile web add ./dsh-serene-0.5.0.tgz
+# 从 tgz 装（去 Release 页面下 dsh-serene-0.6.0.tgz）
+dsh plugin --profile web add ./dsh-serene-0.6.0.tgz
 ```
 
 装完用这条确认插件进了配置树：
@@ -564,7 +564,7 @@ flowchart TD
 更完整的结构说明见 [`FRAMEWORK.md`](./FRAMEWORK.md)。
 
 <details>
-<summary><b>七条设计判断</b>（每条都带一个反模式：那些坑我们真的踩过）</summary>
+<summary><b>八条设计判断</b>（每条都带一个反模式：那些坑我们真的踩过）</summary>
 
 #### 1. 连续优先于强度
 
@@ -626,6 +626,16 @@ flowchart TD
 噪声来自哈希。想换更强的召回可以，只要保持 `activate()` 的输入输出形状。
 
 > 反模式：解释不了，就没法调；没法调只能靠感觉；靠感觉，下一次改动一定会坏。
+
+#### 8. 有些话不能接错
+
+撒娇、调侃、动作、表情都可以试；「不想活了」不是。这一条不交给模型自由判断：
+`core/crisis.js` 先用一层保守的正则分档，`high` 时把这一轮的系统提示换掉——
+先问安不安全、身边有没有人，再给 12356 / 120；不诊断、不劝「想开点」、不承诺保密、
+不说「你只需要我」。宁可误报一次（她这一轮稳一点），不可漏报一次。
+危机轮不写长期记忆：把「他说过不想活」存成以后每次都可能被召回的一条，既不安全也不体面。
+
+> 反模式：把「我没事」当成真的没事，或者用「你还有我呀」把一个人留在这段关系里。
 
 </details>
 
@@ -733,11 +743,12 @@ mindmap
 ### 工具
 
 <details>
-<summary>16 个工具，31 种事件类型，以及模型什么时候该调</summary>
+<summary>17 个工具，31 种事件类型，以及模型什么时候该调</summary>
 
 | 工具 | 作用 |
 | --- | --- |
 | `serene_style` | 发出去之前自检：列点、自称助手、解释设定、通用甜话、太长、一口气问太多 |
+| `serene_crisis` | 这一句里有没有不想活、要伤害自己的意思：`none` 照常，`watch` 留档，`high` 这一轮先接住、问安不安全、给 12356 / 120 |
 | `serene_context` | 人格卡 +【此刻】在做什么 +【外面】+ 心情 + 她相信的 / 注意到的。常驻 prompt 关掉时，新会话开头调一次 |
 | `serene_weather` | 记下你查到的、他窗外的天气（插件不联网）；不传参数就返回三小时内还新鲜的读数 |
 | `serene_belief` | 读 / 改她自己的看法：不传 `topic` 就返回她相信的；一次事件只挪一点 |
@@ -746,8 +757,8 @@ mindmap
 | `serene_introspect` | 夜里（23:00–02:00）回顾一次；一晚只出现一次，白天调用不会自省 |
 | `serene_mood` | 只读此刻状态（自然语言，不含数值） |
 | `serene_event` | 记一件事进情感层（31 种事件，见下） |
-| `serene_remember` | 写一条长期记忆（六类之一，≤ 80 字） |
-| `serene_recall` | 按话题召回记忆，带时间、类型、激活度和 id；**可以一条都不返回** |
+| `serene_remember` | 写一条长期记忆（六类之一，≤ 80 字）；可以带最多 3 句、每句 ≤24 字的原话 |
+| `serene_recall` | 按话题召回记忆，带时间、类型、激活度和 id；有原话就带一句；**可以一条都不返回** |
 | `serene_reinforce` | 这几条真的用进回复了才调：被想起会让它以后更容易被想起 |
 | `serene_state` | 调试用：三层数值、余震、最近事件、疤、今天的主动额度、此刻的作息与精神、外面、看法、观察 |
 | `serene_proactive` | 问「现在该不该主动开口」：理由、今日额度、不说时的替代动作 |
@@ -795,13 +806,17 @@ cold_read / warm_read / moved / disclose / suppress`。
 `memories.jsonl`：一行一条，直接 `grep` 就能找。同一个文件里有三种行：
 
 ```jsonl
-{"id":"m_lq3k2_ab12","kind":"preference","text":"她怕打雷","tags":["怕"],"importance":0.9,"createdAt":1761280000000,"stability":6.9,"lastRecall":0,"recallCount":0}
+{"id":"m_lq3k2_ab12","kind":"preference","text":"她怕打雷","tags":["怕"],"evidence":["上次打雷他缩在墙角"],"importance":0.9,"createdAt":1761280000000,"stability":6.9,"lastRecall":0,"recallCount":0}
 {"type":"reinforce","id":"m_lq3k2_ab12","stability":9.7,"lastRecall":1761500000000,"recallCount":1,"gain":1.4,"at":1761500000000}
 {"type":"forget","id":"m_old_9x","text":"去年的一次争执","reason":"capacity","at":1761600000000}
 ```
 
 追加写，不改历史行：被想起就补一行 `reinforce`，被淘汰就补一行 `forget`（删了哪条必须可查），
-读的时候按先后折起来。老文件不用迁移——没有 `stability` 的记忆按写入时的公式现算。
+读的时候按先后折起来。老文件不用迁移——没有 `stability` 的记忆按写入时的公式现算，
+没有 `evidence` 的记忆就是没有原话。
+
+`evidence` 是他当时那句话的原文，最多 3 句、每句 24 字以内。它不参与召回打分，
+只在概括后面补一句「（原话：「……」）」：模型看到的是他自己的措辞，不是又一层转述。
 
 `motivation.json`：今天的主动额度、上一次开口的时间、还没退掉的 hold。
 
@@ -836,6 +851,14 @@ v2 改成激活度 + 确定性抽样：
 线索低于 `minCue` 的先淘汰；最多 6 条，不足不补位。
 「被想起」会按间隔效应变牢：`S' = S × (1 + 1.2 × (1 − r))`，同一刻连着想几乎不长，
 隔一阵再想起来才明显。只有你确实把某条用进回复、再调 `serene_reinforce`，才算想起。
+
+**专名是另一条路。** 查询里的拉丁词（含 `4090ti` 这种数字混写）如果在全部记忆里只出现在少数几条，
+就是锚点；记忆里有这个锚点，就算整句相关度被平均到 `minCue` 以下，也能被捞回来。
+`rare` 模式还会把只出现过一次的中文词也算进来。
+解决的是「明明记着 ComfyUI 那个报错，却因为句子太长、相关度被平均掉，永远想不起来」。
+代价是它只认字面：这个名字必须真的出现在那条记忆里，锚点不会替它凑数；
+网页版透视里的 `anchored: true` 就是「这条是被名字捞回来的，不是本来够相关」。
+`SERENE_MEMORY_ANCHORS=latin|rare|off` 可调，默认只收拉丁词，`off` 完全回到旧行为。
 
 抽样噪声来自 `hash(id, 查询, 时间戳)`，不是 `Math.random`：同样的输入永远同样的结果。
 写不短的记忆会被拒绝（≤ 80 字）；到 500 条开始淘汰，淘汰记录留在 jsonl 里。
@@ -928,7 +951,7 @@ personas/zhiyao/
 
 ```bash
 npm install          # 只装 devDependencies（schemastery / dsh-tools）
-npm test             # node --test，118 个用例（含网页版的演示流程）
+npm test             # node --test，142 个用例（含网页版的演示流程）
 npm run web          # 本机启动网页版
 npm run web:demo     # 演示模式，不联网、不需要 key
 npm run demo         # 十天情绪时间线（纯函数，不调模型）
@@ -945,6 +968,7 @@ core/lexicon.js           纯函数：事件词表；人格只追加，不改默
 core/life.js              纯函数：她的一天（作息、精力、时间怎么说）
 core/mental.js            纯函数：精神（精力 / 专注 / 紧），由作息和情绪现算
 core/style.js             纯函数：表达自检（列点 / 客服腔 / 太长 / 问太多）
+core/crisis.js            纯函数：危机识别（none / watch / high）与这一轮的底线
 core/almanac.js           纯函数：年、季、月、日、季相、天气怎么说
 core/weather.js           纯函数：天气码、读数归一化、新鲜度、湿冷热
 core/beliefs.js           纯函数：她自己的看法（会被一次事件推动，不会翻面）
@@ -961,11 +985,12 @@ src/stores/introspect-store.js  一晚一次的自省
 src/persona.js            人格档案（单文件 / 目录）→ prompt 段
 src/prompt.js             常驻 prompt 段：人格 +【此刻】+【外面】+ 首启 + 记着的
 src/opening.js            首启只说一次：pending → opened
-src/tools.js              16 个工具（含 serene_status 诊断）
+src/tools.js              17 个工具（含 serene_status 诊断、serene_crisis 底线）
 src/index.js              name / inject / Config / apply
 web/server.mjs            网页版：本地 HTTP、API、静态文件（唯一调模型的外壳）
 web/lib/runtime.mjs       把 core/ 和 stores/ 接成一局对话，并写 trace
 web/lib/prompt.mjs        网页版的 prompt 段落、聊天约定、拆气泡
+web/lib/port-guard.mjs    网页版的端口边界：Host / Origin / Content-Type 三验
 web/lib/model.mjs         DeepSeek /chat/completions 客户端（重试、错误映射）
 web/lib/demo.mjs          演示模式：固定台词，不联网
 web/public/               无框架前端：index.html / app.js / style.css
@@ -995,6 +1020,12 @@ grep -n "node:fs\|process.env\|fetch(" core/*.js   # 应该没有输出
 | 主动开口的预算、hold 和替代动作 | 不自己发消息（网页版的 `web/server.mjs` 才发） |
 | 读人格档案、拼 prompt 段 | 不读 `.env`、凭证、聊天记录原文 |
 | 原子写状态文件，可手改、可进 git | 不联网、不上报、不采集屏幕 |
+
+**回环不是权限。** 网页版只监听 `127.0.0.1`，但本机浏览器里任何一个网页都能向这个端口发请求，
+DNS rebinding 也能把 `evil.example` 指过来。所以每个请求进路由之前先过三道纯判断：
+`Host` 必须是回环名 + 本进程真正监听的端口；带 `Origin` 就必须是同一个回环源；
+带请求体就必须是 `application/json`（跨站表单打不进来）。违规是 403 / 415，
+不碰状态、不调模型。它挡不住已经拿到你电脑的人，只挡住「别的网页替你做主」。
 
 ### 与其它插件的关系
 

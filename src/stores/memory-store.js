@@ -31,16 +31,24 @@ export class MemoryStore {
   #file;
   #cap;
   #curve;
+  #anchorMode;
   #items = null;
   #forgotten = [];
   #patches = new Map();
 
-  constructor({ dir, file = "memories.jsonl", capacity = MEMORY_CAPACITY, curve = "v2" } = {}) {
+  constructor({
+    dir,
+    file = "memories.jsonl",
+    capacity = MEMORY_CAPACITY,
+    curve = "v2",
+    anchorMode = process.env.SERENE_MEMORY_ANCHORS,
+  } = {}) {
     if (!dir) throw new Error("MemoryStore 需要一个数据目录");
     this.#dir = dir;
     this.#file = file;
     this.#cap = Math.max(10, Number(capacity) || MEMORY_CAPACITY);
     this.#curve = curve === "v1" ? "v1" : "v2";
+    this.#anchorMode = anchorMode;
   }
 
   get file() {
@@ -134,7 +142,7 @@ export class MemoryStore {
   recall(query, { limit = 5, now = Date.now(), mood = 0, halfLifeDays = 45 } = {}) {
     this.load();
     if (this.#curve === "v1") return rank(this.#items, query, { limit, now, halfLifeDays });
-    return activate(this.#items, query, { limit, now, mood });
+    return activate(this.#items, query, { limit, now, mood, anchorMode: this.#anchorMode });
   }
 
   /**

@@ -285,13 +285,13 @@ Once it is installed, say "look with serene_status" in that profile. If it retur
 dsh plugin --profile web add dsh-serene
 
 # from GitHub (pins a tag, no npm involved)
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.5.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
 
 # from a local directory (development)
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
-# from a tgz (grab dsh-serene-0.5.0.tgz from the Releases page)
-dsh plugin --profile web add ./dsh-serene-0.5.0.tgz
+# from a tgz (grab dsh-serene-0.6.0.tgz from the Releases page)
+dsh plugin --profile web add ./dsh-serene-0.6.0.tgz
 ```
 
 After installing, confirm the plugin made it into the config tree:
@@ -563,7 +563,7 @@ inside DSH, everything from "event" onward is the model deciding which tool to c
 For the fuller structural write-up, see [`FRAMEWORK.md`](./FRAMEWORK.md).
 
 <details>
-<summary><b>Seven design judgments</b> (each comes with an anti-pattern: the ones we actually stepped in)</summary>
+<summary><b>Eight design judgments</b> (each comes with an anti-pattern: the ones we actually stepped in)</summary>
 
 #### 1. Continuity over intensity
 
@@ -610,6 +610,17 @@ This is a floor, not a preference. What enters the prompt is a sentence of plain
 Every recalled memory and every number must be recomputable from a published formula, and identical input must give identical output. That's why `core/` has no `fs`, no `Date.now()`, no network, no `Math.random` — sampling noise comes from a hash. Swap in a stronger recall if you like, as long as `activate()` keeps its shape.
 
 > Anti-pattern: unexplainable means untunable; untunable means vibes; vibes mean the next change breaks something.
+
+#### 8. Some sentences must not be answered wrong
+
+Teasing, jokes, stage directions, emoji — all fair game. "I don't want to live" is not. This one is not left to the model's judgment:
+`core/crisis.js` sorts the sentence with a conservative rule set first. On `high`, the system prompt for that turn is replaced:
+ask whether he is safe and whether anyone is with him, then give 12356 / 120; do not diagnose, do not say "just cheer up",
+do not promise secrecy, do not say "you only need me". A false positive costs one steadier turn; a miss costs far more.
+A crisis turn is never written to long-term memory: storing "he said he wanted to die" as something recall might bring back
+every few days is neither safe nor decent.
+
+> Anti-pattern: taking "I'm fine" at face value, or keeping someone in the relationship with "you still have me".
 
 </details>
 
@@ -717,11 +728,12 @@ Override example (`~/.dsh/profiles/web/cordis.patch.yml`):
 ### Tools
 
 <details>
-<summary>16 tools, 31 event types, and when the model should call them</summary>
+<summary>17 tools, 31 event types, and when the model should call them</summary>
 
 | Tool | Purpose |
 | --- | --- |
 | `serene_style` | Check a draft before sending: lists, assistant voice, explaining the setup, generic endearments, length, too many questions |
+| `serene_crisis` | Whether this message carries a wish to die or to hurt himself: `none` normal, `watch` logged, `high` means this turn holds him first, asks whether he is safe, and gives 12356 / 120 |
 | `serene_context` | Persona card, what she is doing right now, the outside, her mood, what she believes and what she has noticed. Call once at the start of a new session when the standing prompt section is off |
 | `serene_weather` | Record the weather you looked up for his window (the plugin never fetches it); with no arguments it returns the reading if it is still under three hours old |
 | `serene_belief` | Read or move one of her own beliefs: no `topic` returns what she believes; a single event only nudges it |
@@ -730,8 +742,8 @@ Override example (`~/.dsh/profiles/web/cordis.patch.yml`):
 | `serene_introspect` | Reflect once at night (23:00–02:00); once per night, and daytime calls refuse |
 | `serene_mood` | Read-only current state (natural language, no numbers) |
 | `serene_event` | Record one event into the affect layer (31 event types, below) |
-| `serene_remember` | Write one long-term memory (one of six kinds, ≤ 80 characters) |
-| `serene_recall` | Recall memories by topic, with timestamp, kind, activation and id; **may return nothing** |
+| `serene_remember` | Write one long-term memory (one of six kinds, ≤ 80 characters); may carry up to 3 verbatim lines of ≤ 24 characters each |
+| `serene_recall` | Recall memories by topic, with timestamp, kind, activation and id, plus a verbatim line when there is one; **may return nothing** |
 | `serene_reinforce` | Call only when a recalled memory actually made it into the reply: being recalled makes it easier to recall later |
 | `serene_state` | Debug view: three-layer numbers, residue, recent events, wounds, today's proactive budget, her routine and mental state, the outside, beliefs, observations |
 | `serene_proactive` | Ask "should she speak up right now": the reason, today's remaining budget, and a substitute action when the answer is no |
@@ -778,13 +790,17 @@ the primary layer falls back within an hour or two, while residue takes a day to
 `memories.jsonl`: one record per line, plain `grep` is enough to find things. Three kinds of line share the file:
 
 ```jsonl
-{"id":"m_lq3k2_ab12","kind":"preference","text":"she is afraid of thunder","tags":["fear"],"importance":0.9,"createdAt":1761280000000,"stability":6.9,"lastRecall":0,"recallCount":0}
+{"id":"m_lq3k2_ab12","kind":"preference","text":"she is afraid of thunder","tags":["fear"],"evidence":["he hid in the corner"],"importance":0.9,"createdAt":1761280000000,"stability":6.9,"lastRecall":0,"recallCount":0}
 {"type":"reinforce","id":"m_lq3k2_ab12","stability":9.7,"lastRecall":1761500000000,"recallCount":1,"gain":1.4,"at":1761500000000}
 {"type":"forget","id":"m_old_9x","text":"an argument last year","reason":"capacity","at":1761600000000}
 ```
 
 Append-only: being recalled appends a `reinforce` line, eviction appends a `forget` line (what she forgot must be checkable),
-and both are folded back in on load. Old files need no migration — a memory without `stability` gets the initial formula.
+and both are folded back in on load. Old files need no migration — a memory without `stability` gets the initial formula,
+and a memory without `evidence` simply has no verbatim line.
+
+`evidence` is his exact wording, up to 3 lines of 24 characters each. It does not affect scoring; it only appends
+“（原话：「…」）” after the summary, so the model reads his own phrasing rather than another paraphrase.
 
 `motivation.json`: today's budget, the last opener, and any hold that has not expired yet.
 
@@ -820,6 +836,13 @@ Cues below `minCue` are dropped before sampling; at most 6 items, no backfill.
 Being recalled strengthens a memory by the spacing effect (`S' = S × (1 + 1.2 × (1 − r))`):
 recalling twice in the same instant barely moves it, recalling after a gap moves it a lot.
 Nothing counts as recalled until you actually use it in a reply and call `serene_reinforce`.
+
+**Proper names take a second path.** A Latin token in the query (letters, or letters mixed with digits, like `4090ti`)
+that appears in only a few memories is an anchor; if a memory contains it, that memory can bypass `minCue` even when the
+sentence as a whole averages below the floor. `rare` mode also accepts Chinese tokens that occur exactly once. This fixes "I know she has the ComfyUI error somewhere, but the sentence is long and the relevance gets
+averaged away". The price is literal matching: the name must actually occur in that memory, and an anchor never backfills
+unrelated ones. `anchored: true` in the web trace means "this one came back by name, not by score".
+`SERENE_MEMORY_ANCHORS=latin|rare|off` tunes it; the default only takes Latin tokens, and `off` restores the old behaviour.
 
 The sampling noise comes from `hash(id, query, timestamp)`, not `Math.random`: same input, same output.
 Memories longer than 80 characters are rejected; at 500 entries eviction starts, and every eviction is logged in the jsonl.
@@ -905,7 +928,7 @@ Every other `lexicon` group (`affection / jealousy / scold / …`) only **append
 
 ```bash
 npm install          # installs devDependencies only (schemastery / dsh-tools)
-npm test             # node --test, 118 cases (including the web demo flow)
+npm test             # node --test, 142 cases (including the web demo flow)
 npm run web          # start the web app locally
 npm run web:demo     # demo mode: offline, no key needed
 npm run demo         # ten-day mood timeline (pure functions, no model call)
@@ -922,6 +945,7 @@ core/lexicon.js                 pure functions: event vocabulary; personas appen
 core/life.js                    pure functions: her day (routine, energy, how time is spoken)
 core/mental.js                  pure functions: energy / focus / tension, derived from routine and mood
 core/style.js                   pure functions: style check (lists, assistant voice, length, questions)
+core/crisis.js                  pure functions: crisis detection (none / watch / high) and this turn's floor
 core/almanac.js                 pure functions: year, season, month phase, how weather is spoken
 core/weather.js                 pure functions: weather codes, normalizing a reading, freshness, wet/cold/hot
 core/beliefs.js                 pure functions: her own beliefs (nudged by events, never flipped)
@@ -938,11 +962,12 @@ src/stores/introspect-store.js  once-per-night reflection
 src/persona.js                  persona profile (file or pack) → prompt section
 src/prompt.js                   standing prompt: persona + right now + outside + opening + remembered
 src/opening.js                  first meeting happens once: pending → opened
-src/tools.js                    the sixteen tools (incl. the serene_status health check)
+src/tools.js                    the seventeen tools (incl. serene_status and the serene_crisis floor)
 src/index.js                    name / inject / Config / apply
 web/server.mjs                  web app: local HTTP, API, static files (the only model-calling shell)
 web/lib/runtime.mjs             wires core/ and stores/ into one conversation, writes traces
 web/lib/prompt.mjs              web prompt sections, chat rules, bubble splitting
+web/lib/port-guard.mjs          web port boundary: Host / Origin / Content-Type checks
 web/lib/model.mjs               DeepSeek /chat/completions client (retries, error mapping)
 web/lib/demo.mjs                demo mode: fixed lines, no network
 web/public/                     dependency-free frontend: index.html / app.js / style.css
@@ -972,6 +997,8 @@ so the same input always produces the same output — `test/recall-v2.test.js` p
 | Budget, hold and substitute action for proactive openers | Send messages on its own (only the web app's `web/server.mjs` does that) |
 | Read persona profiles, assemble prompt sections | Read `.env`, credentials, or raw chat logs |
 | Write state files atomically; hand-editable and git-friendly | Use the network, send telemetry, or capture the screen |
+
+**Loopback is not permission.** The web app listens on `127.0.0.1` only, but any page in your local browser can send requests to that port, and DNS rebinding can point `evil.example` at it. So every request passes three pure checks before routing: `Host` must be a loopback name plus the port this process actually bound; if `Origin` is present it must be that same loopback origin; and a request with a body must be `application/json` (cross-site forms cannot get through). Violations get 403 / 415, touch no state and call no model. It does not stop someone who already has your machine; it stops another page from acting on your behalf.
 
 ### Relationship to other plugins
 

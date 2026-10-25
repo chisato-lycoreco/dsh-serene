@@ -15,7 +15,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const VERSION = "0.5.0";
+export const VERSION = "0.6.0";
 export const DEFAULT_PORT = 4317;
 export const DEFAULT_MODEL = "deepseek-chat";
 export const DEFAULT_BASE_URL = "https://api.deepseek.com";

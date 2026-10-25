@@ -26,6 +26,25 @@ export const MEMORY_KINDS = ["fact", "preference", "moment", "promise", "insight
 /** 单条上限：记忆是提炼，不是聊天记录。写不短，说明还没想清楚。 */
 export const MAX_TEXT_CHARS = 80;
 
+/** 原话锚点：一条记忆最多带三小句「他当时是怎么说的」。 */
+export const MAX_EVIDENCE_CHARS = 24;
+export const MAX_EVIDENCE_COUNT = 3;
+
+/**
+ * 专名锚点：一个只靠着「相关度」打分的召回，最容易漏掉的是名字。
+ *
+ * 「上次那个 ComfyUI 的报错」「你说的 Rust 那个 crate」——这类查询里真正能定位的
+ * 是那个专名，可它在整句里只占一两个词，`cueScore` 被句长一除就掉到 `minCue` 以下，
+ * 记忆明明在，却永远想不起来。所以：查询里的拉丁词（含 `4090ti` 这种字母数字混写；
+ * `rare` 模式下还有低频中文词）如果在语料里很少见，就当成锚点——只要那条记忆里也有它，就绕过 minCue。
+ *
+ * 不做实体识别，也不查词典：只看「这个词在这个人的记忆里出现得少不少」。
+ */
+export const LATIN_ANCHOR_MAX_DF = 10;
+
+/** `SERENE_MEMORY_ANCHORS`：`latin`（默认）/ `rare` / `off`。off 完全回到 0.2.0 的行为。 */
+const ANCHOR_MODES = new Set(["latin", "rare", "off"]);
+
 /** 长期记忆的容量预算。只增不减的记忆等于没有记忆。 */
 export const MEMORY_CAPACITY = 500;
 
@@ -75,6 +94,63 @@ export function cueScore(memory, queryTokens) {
   let hit = 0;
   for (const token of new Set(queryTokens)) if (tokens.has(token)) hit += 1;
   return Math.min(1, hit / Math.max(3, Math.sqrt(tokens.size)));
+}
+
+/**
+ * 语料里的词频：这个词出现在几条记忆里。
+ *
+ * 只数一遍，召回时复用。`evidence` 也数进去——名字可能只在原话里，不在概括里。
+ */
+export function corpusDf(memories) {
+  const df = new Map();
+  for (const memory of Array.isArray(memories) ? memories : []) {
+    for (const token of new Set(tokenize(usableText(memory)))) {
+      df.set(token, (df.get(token) ?? 0) + 1);
+    }
+  }
+  return df;
+}
+
+/** 分词用的全文：概括 + 标签 + 原话。 */
+function usableText(memory) {
+  const tags = Array.isArray(memory?.tags) ? memory.tags.join(" ") : "";
+  const evidence = Array.isArray(memory?.evidence) ? memory.evidence.join(" ") : "";
+  return `${memory?.text ?? memory ?? ""} ${tags} ${evidence}`;
+}
+
+/** 这个词像不像一个专名：纯拉丁字母 / 数字 / 下划线，至少两个字符。 */
+const isLatinToken = (token) => /^[a-z0-9_]{2,}$/.test(token) && /[a-z]/.test(token);
+
+/**
+ * 从查询里挑出锚点词。
+ *
+ * @param {string[]} queryTokens `tokenize()` 的结果
+ * @param {Map<string, number>} df `corpusDf()` 的结果
+ * @param {"latin"|"rare"|"off"} mode 默认 `latin`；环境变量由 `MemoryStore` 读，core 不读环境
+ */
+export function anchorTokens(queryTokens, { df = new Map(), mode = "latin" } = {}) {
+  const picked = ANCHOR_MODES.has(mode) ? mode : "latin";
+  if (picked === "off") return new Set();
+  const anchors = new Set();
+  for (const token of new Set(Array.isArray(queryTokens) ? queryTokens : [])) {
+    const count = df.get(token) ?? 0;
+    if (isLatinToken(token)) {
+      if (count <= LATIN_ANCHOR_MAX_DF) anchors.add(token);
+      continue;
+    }
+    // rare 模式把「只出现过一次的中文词」也当锚点。默认不开：中文二元组太碎，
+    // 一个生僻搭配就能把不相干的记忆拉进来。
+    if (picked === "rare" && count === 1) anchors.add(token);
+  }
+  return anchors;
+}
+
+/** 这条记忆里有没有查询的锚点词。 */
+export function hitsAnchor(memory, anchors) {
+  if (!anchors?.size) return false;
+  const tokens = new Set(tokenize(usableText(memory)));
+  for (const anchor of anchors) if (tokens.has(anchor)) return true;
+  return false;
 }
 
 /**
@@ -170,12 +246,18 @@ function gumbel(text) {
  *
  *   activation = 1.1·ln(保持 + 0.02) + 0.9·线索 + 0.5·重要度 + 心情染色 + 0.4·Gumbel(seed)
  *
- * 线索低于 minCue 直接出局（返回 −Infinity），不参与抽样。
+ * 线索低于 minCue 直接出局（返回 −Infinity），不参与抽样；但如果这条记忆里
+ * 有查询里的专名锚点（见 `anchorTokens`），就绕过 minCue——名字比句长更可靠。
  * Gumbel 的 seed 只由 (id, 查询词, 时间戳) 决定：同样的输入，同样的结果。
  */
-export function activationOf(memory, queryTokens, now = Date.now(), { mood = 0, minCue = RECALL.minCue } = {}) {
+export function activationOf(
+  memory,
+  queryTokens,
+  now = Date.now(),
+  { mood = 0, minCue = RECALL.minCue, anchors = null } = {},
+) {
   const cue = cueScore(memory, queryTokens);
-  if (cue < minCue) return -Infinity;
+  if (cue < minCue && !hitsAnchor(memory, anchors)) return -Infinity;
   const keep = retention(memory, now);
   const important = unit(Number(memory?.importance ?? 0.5));
   const seed = `${memory?.id ?? memory?.text ?? ""}|${[...new Set(queryTokens)].sort().join(",")}|${now}`;
@@ -192,22 +274,37 @@ export function activationOf(memory, queryTokens, now = Date.now(), { mood = 0, 
 /**
  * v2 召回：激活度排序，取前 k 条，不足不补。
  *
- * @returns 允许空数组。每条带 score（激活度）、cue、retention，方便解释「为什么是它」。
+ * @returns 允许空数组。每条带 score（激活度）、cue、retention、anchored，
+ *   方便解释「为什么是它」——包括「它本来不够格，是被那个名字捞回来的」。
  */
 export function activate(
   memories,
   query,
-  { limit = RECALL.limit, now = Date.now(), mood = 0, minCue = RECALL.minCue, floor = RECALL.floor } = {},
+  {
+    limit = RECALL.limit,
+    now = Date.now(),
+    mood = 0,
+    minCue = RECALL.minCue,
+    floor = RECALL.floor,
+    anchorMode = "latin",
+  } = {},
 ) {
   const queryTokens = Array.isArray(query) ? query : tokenize(query);
   if (!queryTokens.length) return [];
-  return (Array.isArray(memories) ? memories : [])
-    .map((memory) => ({
-      memory,
-      score: activationOf(memory, queryTokens, now, { mood, minCue }),
-      cue: cueScore(memory, queryTokens),
-      retention: retention(memory, now),
-    }))
+  const list = Array.isArray(memories) ? memories : [];
+  const anchors = anchorTokens(queryTokens, { df: corpusDf(list), mode: anchorMode });
+  return list
+    .map((memory) => {
+      const cue = cueScore(memory, queryTokens);
+      const anchored = cue < minCue && hitsAnchor(memory, anchors);
+      return {
+        memory,
+        score: activationOf(memory, queryTokens, now, { mood, minCue, anchors }),
+        cue,
+        retention: retention(memory, now),
+        anchored,
+      };
+    })
     .filter((item) => Number.isFinite(item.score) && item.score >= floor)
     .sort(
       (a, b) =>
@@ -221,6 +318,7 @@ export function activate(
       score: round(item.score, 3),
       cue: round(item.cue, 3),
       retention: round(item.retention, 3),
+      anchored: item.anchored,
     }));
 }
 
@@ -273,6 +371,15 @@ export function normalizeMemory(input, { now = Date.now(), maxChars = MAX_TEXT_C
     kind,
     text,
     tags: Array.isArray(input?.tags) ? input.tags.map(String).slice(0, 8) : [],
+    // 原话：不是聊天记录，是最多三小句「他当时到底怎么说的」。写的时候可以不带；
+    // 带了以后 prompt 和 recall 会把它放在概括后面，作为「凭什么记得」的凭据。
+    evidence: (Array.isArray(input?.evidence) ? input.evidence : input?.evidence ? [input.evidence] : [])
+      // 压成一行：原话会进 prompt 和 jsonl，换行会把一段话拆成两条、也容易被当成新指令。
+      .map((line) =>
+        Array.from(String(line ?? "").replace(/\s+/g, " ").trim()).slice(0, MAX_EVIDENCE_CHARS).join(""),
+      )
+      .filter(Boolean)
+      .slice(0, MAX_EVIDENCE_COUNT),
     importance,
     createdAt,
     updatedAt: Number(input?.updatedAt) || createdAt,
