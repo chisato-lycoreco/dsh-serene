@@ -2,7 +2,7 @@
 
 ![dsh-serene：陪很久，不是聊得很嗨](https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/banner.jpg)
 
-[![npm](https://img.shields.io/npm/v/dsh-serene.svg?labelColor=0a161d&color=4f9e94)](https://www.npmjs.com/package/dsh-serene)
+[![release](https://img.shields.io/github/v/release/chisato-lycoreco/dsh-serene?labelColor=0a161d&color=4f9e94)](https://github.com/chisato-lycoreco/dsh-serene/releases)
 [![CI](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml/badge.svg)](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4f9e94.svg?labelColor=0a161d)](./LICENSE)
 [![DSH](https://img.shields.io/badge/dsh-0.2.1--rc.2-4f9e94.svg?labelColor=0a161d)](https://deepseek-harness.github.io/deepseek-harness/)
@@ -17,7 +17,7 @@
 > **只想聊两句，不想装任何东西？**
 > 下载、解压、双击 `start-web-demo.cmd`，浏览器里就能和她说话。不联网、不要 key、不花钱。
 >
-> **想接进自己的 agent？** `dsh plugin --profile web add dsh-serene`，一条命令。
+> **想接进自己的 agent？** `dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"`，一条命令。
 
 <img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/01-chat.png" alt="网页版：左边是对话，右边是她的此刻、情绪和她记得的事" width="900">
 
@@ -271,7 +271,7 @@ macOS / Linux 把前面换成 `~/.dsh/plugins/dsh-serene/`。
 要求：DSH `>= 0.2.1-rc.2`，Node `>= 22.19`。**安装前先完全退出 DSH**（安装会改 profile 的 `package.json` 和 `cordis.patch.yml`）。
 
 ```bash
-dsh plugin --profile web add dsh-serene
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
 ```
 
 装完在那个 profile 里说一句「用 serene_status 看看」，返回人格名、数据目录、记忆条数，就说明她真的挂上了。
@@ -280,10 +280,7 @@ dsh plugin --profile web add dsh-serene
 <summary><b>另外三种装法</b>，以及凭据、自检、覆盖配置的坑</summary>
 
 ```bash
-# 从 npm 装（推荐）
-dsh plugin --profile web add dsh-serene
-
-# 从 GitHub 装（跟着 tag，不经过 npm）
+# 从 GitHub 装（跟着 tag）
 dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
 
 # 从本地目录装（开发时）
@@ -422,7 +419,7 @@ flowchart LR
 先完全退出 DSH，再装（安装会改 profile 的 `package.json` 和 `cordis.patch.yml`）：
 
 ```bash
-dsh plugin --profile web add dsh-serene
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
 ```
 
 接着在装着插件的那个 profile 里说一句「用 serene_status 看看」。它返回人格名、数据目录、记忆条数，就说明她挂上了。挂不上时它会自己降级，并把原因留在 `serene_status` 和一行 stderr 里。

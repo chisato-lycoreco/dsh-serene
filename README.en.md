@@ -2,7 +2,7 @@
 
 ![dsh-serene: not how well she acts, whether she survives](https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/banner-en.jpg)
 
-[![npm](https://img.shields.io/npm/v/dsh-serene.svg?labelColor=0a161d&color=4f9e94)](https://www.npmjs.com/package/dsh-serene)
+[![release](https://img.shields.io/github/v/release/chisato-lycoreco/dsh-serene?labelColor=0a161d&color=4f9e94)](https://github.com/chisato-lycoreco/dsh-serene/releases)
 [![CI](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml/badge.svg)](https://github.com/chisato-lycoreco/dsh-serene/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4f9e94.svg?labelColor=0a161d)](./LICENSE)
 [![DSH](https://img.shields.io/badge/dsh-0.2.1--rc.2-4f9e94.svg?labelColor=0a161d)](https://deepseek-harness.github.io/deepseek-harness/)
@@ -17,7 +17,7 @@ Personality is data, mood is state, memory is a file — all three readable, edi
 > **Just want to talk for a while without installing anything?**
 > Download, extract, double-click `start-web-demo.cmd`, and you can talk to her in a browser. Offline, no key, no cost.
 >
-> **Want it inside your own agent?** `dsh plugin --profile web add dsh-serene`. One command.
+> **Want it inside your own agent?** `dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"`. One command.
 
 <img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/01-chat.png" alt="The web app: conversation on the left, her current moment, mood and memories on the right" width="900">
 
@@ -272,7 +272,7 @@ Still stuck? Photograph the error in the black window and open an **Issue** on t
 Requires DSH `>= 0.2.1-rc.2` and Node `>= 22.19`. **Quit DSH completely before installing** (installation modifies the profile's `package.json` and `cordis.patch.yml`).
 
 ```bash
-dsh plugin --profile web add dsh-serene
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
 ```
 
 Once it is installed, say "look with serene_status" in that profile. If it returns the persona name, data dir and memory count, she is really mounted.
@@ -281,10 +281,7 @@ Once it is installed, say "look with serene_status" in that profile. If it retur
 <summary><b>Three other ways to install</b>, plus credentials, the self-check, and the override trap</summary>
 
 ```bash
-# from npm (recommended)
-dsh plugin --profile web add dsh-serene
-
-# from GitHub (pins a tag, no npm involved)
+# from GitHub (pins a tag)
 dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
 
 # from a local directory (development)
@@ -423,7 +420,7 @@ When she gets it wrong, it can only come from three places: **the persona is wro
 Quit DSH completely, then install (this edits the profile's `package.json` and `cordis.patch.yml`):
 
 ```bash
-dsh plugin --profile web add dsh-serene
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
 ```
 
 Then say "look with serene_status" in the profile that has the plugin. If it returns the persona name, data dir and memory count, she's mounted. If not, she degrades quietly and leaves the reason in `serene_status` and one line of stderr.
