@@ -748,6 +748,7 @@ async function openSettings() {
   }
   const config = app.config ?? {};
   const remember = config.remember !== false;
+  const crystals = config.crystals !== false;
   const sourceText = {
     env: "来自环境变量 DEEPSEEK_API_KEY",
     config: "存在这台电脑的设置里",
@@ -778,6 +779,10 @@ async function openSettings() {
         <button class="switch ${remember ? "is-on" : ""}" id="set-remember" role="switch" aria-checked="${remember}"></button>
       </div>
       <div class="setting">
+        <div class="setting-text"><b>凭经验做事</b><span>从后果里长出来的经验；想事情的路子常驻，经验只在对得上时出现。关掉不影响记忆。</span></div>
+        <button class="switch ${crystals ? "is-on" : ""}" id="set-crystals" role="switch" aria-checked="${crystals}"></button>
+      </div>
+      <div class="setting">
         <div class="setting-text"><b>每天主动找你几次</b><span>0 = 她永远不先开口。默认 3 次，且两次之间至少隔一小时。</span></div>
         <input type="range" class="range" id="set-proactive" min="0" max="6" step="1" value="${Number(config.proactivePerDay ?? 3)}" />
       </div>
@@ -805,6 +810,11 @@ async function openSettings() {
     rememberButton.classList.toggle("is-on");
     rememberButton.setAttribute("aria-checked", String(rememberButton.classList.contains("is-on")));
   });
+  $("#set-crystals").addEventListener("click", () => {
+    const button = $("#set-crystals");
+    button.classList.toggle("is-on");
+    button.setAttribute("aria-checked", String(button.classList.contains("is-on")));
+  });
   $("#set-help").addEventListener("click", openHelp);
   $$("[data-reset]").forEach((button) => {
     button.addEventListener("click", () => reset(button.dataset.reset));
@@ -822,6 +832,7 @@ async function saveSettings() {
       model: $("#set-model").value.trim(),
       persona: $("#set-persona").value,
       remember: $("#set-remember").classList.contains("is-on"),
+      crystals: $("#set-crystals").classList.contains("is-on"),
       proactivePerDay: Number($("#set-proactive").value),
     };
     const result = await api("/api/setup", { method: "POST", body: payload });

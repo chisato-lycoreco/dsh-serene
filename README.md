@@ -12,7 +12,7 @@
 **陪很久，不是聊得很嗨。**
 
 一个会记得你的角色，接进 [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/)。
-人格是数据，情绪是状态，记忆是文件——三者都可读、可改、可复现。
+人格是数据，情绪是状态，记忆是文件，经验只从后果里长——都可读、可改、可复现。
 
 > **只想聊两句，不想装任何东西？**
 > 下载、解压、双击 `start-web-demo.cmd`，浏览器里就能和她说话。不联网、不要 key、不花钱。
@@ -29,7 +29,7 @@
 
 **上手** · [三分钟玩上](#三分钟玩上不用装-dsh) ｜ [装进 DSH](#装进-dsh) ｜ [开局：知遥](#开局知遥) ｜ [把她养成你的](#把她养成你的)
 
-**深一点** · [为什么这么设计](#为什么这么设计) ｜ [参考](#参考)
+**深一点** · [经验怎么长出来](#经验不是总结出来的结晶层) ｜ [为什么这么设计](#为什么这么设计) ｜ [参考](#参考)
 
 ---
 
@@ -102,6 +102,9 @@
 | 她记得 / 想不起来 | [`core/recall.js`](./core/recall.js)、`src/stores/memory-store.js` |
 | 主动开口的预算 | [`core/motivation.js`](./core/motivation.js) |
 | 表达自检 | [`core/style.js`](./core/style.js) |
+| 她听得懂的梗 | [`core/memes.js`](./core/memes.js)（只在他先用时拼进 prompt） |
+| 她手上那件、刚才那件 | [`core/leisure.js`](./core/leisure.js)、[`core/doing.js`](./core/doing.js)、`src/stores/leisure-store.js` |
+| 这一轮有没有用上经验 | [`core/crystal.js`](./core/crystal.js)、`src/stores/crystal-store.js` |
 | 透视里的账 | `web/lib/runtime.mjs` 每轮写一条 trace |
 
 **她的一天可以画出来：**
@@ -111,6 +114,132 @@
 *十天，底色、此刻、关系三条线，以及第 3 天留下的那道疤。不是手画的：[`core/emotion.js`](./core/emotion.js) 的纯函数跑十天（`npm run demo`），再画成帧（`npm run preview`）。改一行事件，整条曲线和那道疤都会跟着变——这就是「可复算」的意思。*
 
 **她也会自己开口。** 页面开着时，她可能过一阵来找你；夜里 23:00–08:00 不打扰，每天有次数上限，两次之间有间隔。戳一戳、摸头、递水、夸她一句也会走同一套情绪和记忆——不是一个独立的小动画。
+
+**她也在被看护。** 右上角的「看护」是同一间屋子的另一面墙：不聊天，只读数。
+
+| 页面 | 看什么 |
+| --- | --- |
+| 今天 | 今天几轮、几句话、多长、问了几次、想起几条；和昨天比 |
+| 红线 | 六条**机判**的线：自称模型、助手腔、把数字说出口、危机没接住、表达自检没过、记忆没抽出来 |
+| 指标 | 一天一行；有一天没记上，就空一天 |
+| 变更 | 改之前写下预期，观察窗到了逼自己判一次「有效 / 无效 / 有害 / 未测」 |
+| 体检 | 采集自己在不在、落后多少、和 `chat.jsonl` 对不对得上 |
+
+它只读同一数据目录里的 `traces.jsonl` / `chat.jsonl`，只往 `<数据目录>/watch/` 里写瘦记录（数字、枚举、截断到 40 字的证据，**不存正文**）。不联网、不调模型、不截屏；删掉 `watch/` 这个目录，她照常说话，只是这一页从今天重新开始。
+
+红线全部是字面规则：**宁可漏，不可冤**。命中了先看证据；没命中，也不等于她没事。
+
+**她也不会给自己编行程。** 「手上」只在她真有一段消遣记录时出现（`leisure.jsonl` 里开始了、还没到点）；没有就按作息说此刻。这个包没有常驻进程，所以「自己开始看一部片子」不是页面打开就发生的事——那该是她的决定，或者宿主的调度。
+
+## 经验不是总结出来的：结晶层
+
+聊完天让模型「总结一下学到了什么」，得到的多半是一句正确的废话：
+「要多沟通」「要珍惜眼前人」。它听起来像成长，其实谁都能说，下次也帮不上忙。
+
+这个仓库把「学」拆成两件更小的事，接在人格（L0）、理解（L1）、状态（L2）之后；它们各自只认一种来源：
+
+- **经验（L3）**：这种时候，我那么做，结果怎么样，下回还做不做。来源只能是**后果**。
+- **想事情的路子（L4）**：她习惯先看哪儿、先信什么。不是内容，是注意力。来源是**反复出现的行为**，不是自我介绍。
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#08161c","fontFamily":"Songti SC, Noto Serif SC, SimSun, serif","fontSize":"15px","primaryColor":"#0c2028","primaryTextColor":"#dfece8","primaryBorderColor":"#4f9e94","lineColor":"#4f9e94","secondaryColor":"#12242c","tertiaryColor":"#0a1a21","mainBkg":"#0c2028","nodeBorder":"#4f9e94","nodeTextColor":"#dfece8","clusterBkg":"#0a1a2199","clusterBorder":"#96ded033","edgeLabelBackground":"#0a1a21","titleColor":"#dfece8","textColor":"#dfece8"},"themeCSS":".edge{stroke:#4f9e94!important;stroke-width:2!important}.marker{fill:#4f9e94!important}.mindmap-node .node-bkg{fill:#0c2028!important;stroke:#4f9e94!important}.mindmap-node .label-container{fill:#123a41!important;stroke:#8fe0d2!important}.mindmap-node .label,.mindmap-node span,.mindmap-node p{color:#dfece8!important}"}}%%
+flowchart TD
+    A["一次经历<br/>他说「马上」，人还在忙"] --> B["后果<br/>十分钟后他自己收了"]
+    I["反复出现的行为<br/>至少 3 次"] --> C{"三道闸门"}
+    B --> C
+    C -->|"证据不够"| X["不收<br/>宁可不学"]
+    C -->|"没有反证"| X
+    C -->|"谁都能说"| X
+    C -->|"全过"| D["L3 经验<br/>这种时候 → 我做了什么 → 结果 → 下回"]
+    C -->|"全过"| G["L4 想事情的路子<br/>注意力习惯，最多 8 条"]
+    D --> E["这一轮出现触发词<br/>最多挑 1 条"]
+    D --> F["再次应验，owner 才调<br/>promoteLesson：+0.05，封顶 0.9"]
+    E --> H["进 prompt"]
+    F --> H
+    G --> H
+```
+
+**四样东西别混在一起：**
+
+|  | 记忆 | 看法 | 经验（L3） | 想事情的路子（L4） |
+| --- | --- | --- | --- | --- |
+| 回答什么 | 发生了什么 | 我怎么看这件事 | 这么做有没有用 | 我习惯先看哪儿 |
+| 从哪来 | 对话里值得留的 | 一件事之后慢慢偏 | **后果** + 至少 2 个证据 | 反复出现的行为 + 至少 3 个证据 |
+| 一条长什么样 | 「他怕打雷」 | 「雨声让人安心」 | 这种时候 → 我做了什么 → 结果 → 下回 | 一句习惯 + 为什么 + 什么时候不适用 |
+| 上限 | 500 条 | 少量 | 20 条 | 8 条（prompt 里最多 5 条） |
+| 什么时候出现 | 相关才召回 | 相关才浮现 | 触发词优先，最多 1 条 | 常驻，但**不说出口**（整层可关） |
+
+### 三道闸门写在代码里，不靠她自觉
+
+| 闸门 | 它在防什么 | 没过会怎样 |
+| --- | --- | --- |
+| **证据** | 一次巧合被当成规律 | `evidence` 少于 2 条 → `no_evidence`，留在文件里但不进 prompt |
+| **可证伪** | 一条永远正确的道理 | `counter` 为空 → `no_counter`：没写「什么情况下不成立」，就不算学会 |
+| **陌生人** | 「要相互理解」这种换谁都能说的话 | `isPlatitude()` 命中 → `platitude`；owner 显式写 `ownerApproved: true` 才放行 |
+
+前两道是数出来的，第三道是启发式——它宁可误杀一句好话，也不放一句口号进去。
+`serene_state` 会把每条经验的 `status` 和缺口（`issues`）一起返回，调不出来时先看那里。
+
+### 一条经验，从文件到 prompt
+
+`lessons.jsonl` 一行一条，由 owner 往后追加：
+
+```jsonl
+{"id":"ls_busy","situation":"他说马上，人还在忙","did":"没催，只问要不要把事挪到明天","outcome":"十分钟后他自己收了","next":"先等十分钟，再问要不要挪","counter":"他明确说今天必须做完时别等","when":["在忙","马上"],"evidence":["m_1","m_2"],"confidence":0.6}
+```
+
+进 prompt 时会被渲染成一句像回忆的话，而不是一条结论：
+
+> 你自己试出来的一件事（别讲成道理，碰到就照做）：
+> - 上回这种时候：他说马上，人还在忙；我没催，只问要不要把事挪到明天，十分钟后他自己收了。下回先等十分钟，再问要不要挪。
+
+触发词来自 `when`；没命中就退回字面相似度，低于 `0.34` 就**一条都不给**。
+挑不到时，`serene_crystal` 会明说「这一轮没有对得上的经验，别硬套」——留白比硬塞一条更像人。
+
+想事情的路子放在 `dispositions.json`，形状是「一句话 + 为什么 + 边界」：
+
+```json
+{
+  "version": 1,
+  "items": [
+    {
+      "text": "先看他做了什么，再听他说了什么",
+      "because": "说想早睡，到点真走了；嘴上说没事，第二天还是没来",
+      "limit": "他明确开口要什么时，先信那句话",
+      "evidence": ["m_1", "m_2", "m_3"]
+    }
+  ]
+}
+```
+
+它进 prompt 时永远带同一行头：
+
+> 你平时想事情的路子（不是台词，不问就不提，他真问起才认）：
+> 先看他做了什么，再听他说了什么。
+
+**为什么非要这行头？** 因为模型很容易把「她习惯先观察」说成「我是一个善于观察的人」。
+前者是背景，后者是人设台词。`limit` 也是同理：没有「什么时候不适用」，一条路子就会变成卡通性格。
+
+### 这一版怎么用，边界在哪
+
+| 场景 | 怎么发生 |
+| --- | --- |
+| 网页版 | 每轮自动拿你的原话当 `cue`；设置里「凭经验做事」可以关 |
+| DSH 插件 | 常驻段只放想事情的路子；经验要模型自己调 `serene_crystal({cue})`。`serene_context({cue})` 也会带 |
+| 看现在有几条 | `serene_status` 报「经验 X 条（可用 Y）」；`serene_state` 返回完整条目和缺口 |
+| 关掉 | 插件配置 `crystals: false`；网页版设置里的开关。关掉只是不读，文件不动 |
+| 清空 | 删 `lessons.jsonl` / `dispositions.json`。没有隐藏副本（人格档案自带的种子除外） |
+
+**它不会自己变聪明。** 这一版没有「聊完自动长一条」的入口，也没有后果账本。
+整块也很小：一条经验 ≤72 字，想事情的路子正文 ≤104 字；没有内容就整段不出现。
+插件不观察你后来怎么样，不替她结算，也不让模型写自己的经验——那会直接绕过上面三道闸门。
+`lessons.jsonl` 和 `dispositions.json` 是由 owner 自己维护的文件，插件只读。
+真要让经验自己长，得在宿主侧记后果、跑验证、再调用 `promoteLesson()` / `reviseLesson()`；
+这部分在私人版里，没有搬进这个包。
+
+**所以它不是「越聊越懂你」的承诺。** 它是一个很窄的保证：
+写进去的每一条，都得说清楚从哪来、什么情况下不成立、下回具体怎么做。
+写不出来，就不写——这比多一条漂亮话更接近「学会」。
 
 ## 她不是什么
 
@@ -520,7 +649,7 @@ personas/你的角色/
 
 ## 为什么这么设计
 
-### 一个真源，三种速度
+### 一个真源，五种速度
 
 角色崩掉，多半是因为同一个地方既装着「她是谁」，又装着「她此刻怎么样」。按变化速度分开管，崩的地方就收敛了：
 
@@ -529,12 +658,18 @@ personas/你的角色/
 | **L0 真源** | 不可谈判的事实与边界：名字、身份、关系、说话的底线 | 只有你（人） | 不变 | `persona.json`、`voice.md`、`boundaries.md` |
 | **L1 理解** | 她的看法、她注意到的你、她的自省 | 她自己，每条带来源 | 天级到周级 | `beliefs.json`、`profile.json`、`introspect.json` |
 | **L2 状态** | 此刻的心情、精力、在做什么 | 事件与时间，自动 | 分钟级到小时级 | `emotion.json`、`core/life.js` |
+| **L3 经验** | 这么做有没有用：这种时候 → 我做了什么 → 结果 → 下回 | 只有后果能提名；owner 写盘 | 周级到月级 | `lessons.jsonl` |
+| **L4 想事情的路子** | 她习惯先看哪儿；不是内容，是注意力 | 反复行为提名（至少 3 个证据）；owner 写盘 | 月级 | `dispositions.json` |
 
 仲裁只有三句：
 
 1. **内容与边界，L0 压 L1。** L0 说不能做的，L1 写得再动情也不能做。
 2. **温度与语气，L2 压 L0。** 她今天难过，可以话少、可以软，但不可以改事实。
 3. **L2 不许写 L0/L1。** 心情不能直接改人格；能改人格的只有带来源的反思。
+
+L3 / L4 不参与上面三条仲裁：它们不改事实、不改边界，也不替她做决定；
+只在她要开口前，提供一个「上回这样做了，结果如何」的参照。三道闸门见
+[经验不是总结出来的](#经验不是总结出来的结晶层)。
 
 ### 一次对话里发生了什么
 
@@ -702,7 +837,7 @@ mindmap
 ### 配置
 
 <details>
-<summary>17 个键，日常只需要动 <code>persona</code> 和 <code>dataDir</code></summary>
+<summary>16 个键，日常只需要动 <code>persona</code> 和 <code>dataDir</code></summary>
 
 | 键 | 默认 | 说明 |
 | --- | --- | --- |
@@ -721,6 +856,7 @@ mindmap
 | `depth` | `normal` | 每轮给多少背景：`short` = 人格 + 此刻 + 外面；`normal` 再加记忆 / 看法 / 观察；`deep` 再加夜里的自省 |
 | `world` | `true` | 把年月日、季节写进【外面】；关掉就只剩钟点 |
 | `introspection` | `true` | 允许夜里自省一次；只在 `depth=deep` 时进 prompt，也可用 `serene_introspect` 手动读 |
+| `crystals` | `true` | 读经验与想事情的路子：想事情的路子常驻，经验由 `serene_crystal` 按 `cue` 挑；`false` 就完全不读 |
 
 覆盖示例（`~/.dsh/profiles/web/cordis.patch.yml`）：
 
@@ -740,13 +876,14 @@ mindmap
 ### 工具
 
 <details>
-<summary>17 个工具，31 种事件类型，以及模型什么时候该调</summary>
+<summary>18 个工具，31 种事件类型，以及模型什么时候该调</summary>
 
 | 工具 | 作用 |
 | --- | --- |
 | `serene_style` | 发出去之前自检：列点、自称助手、解释设定、通用甜话、太长、一口气问太多 |
 | `serene_crisis` | 这一句里有没有不想活、要伤害自己的意思：`none` 照常，`watch` 留档，`high` 这一轮先接住、问安不安全、给 12356 / 120 |
-| `serene_context` | 人格卡 +【此刻】在做什么 +【外面】+ 心情 + 她相信的 / 注意到的。常驻 prompt 关掉时，新会话开头调一次 |
+| `serene_context` | 人格卡 +【此刻】在做什么 +【外面】+ 心情 + 她相信的 / 注意到的；带 `cue` 时才可能多一条对得上的经验。常驻 prompt 关掉时，新会话开头调一次 |
+| `serene_crystal` | 传他刚说的那句话当 `cue`：触发词优先，没命中按字面相似度挑一条，太低就空着；不传 `cue` 只返回「想事情的路子」 |
 | `serene_weather` | 记下你查到的、他窗外的天气（插件不联网）；不传参数就返回三小时内还新鲜的读数 |
 | `serene_belief` | 读 / 改她自己的看法：不传 `topic` 就返回她相信的；一次事件只挪一点 |
 | `serene_notice` | 记下你注意到他的一件事（作息 / 口味 / 在意的事 / 说话习惯 / 情绪底色 / 对天气的反应） |
@@ -757,10 +894,10 @@ mindmap
 | `serene_remember` | 写一条长期记忆（六类之一，≤ 80 字）；可以带最多 3 句、每句 ≤24 字的原话 |
 | `serene_recall` | 按话题召回记忆，带时间、类型、激活度和 id；有原话就带一句；**可以一条都不返回** |
 | `serene_reinforce` | 这几条真的用进回复了才调：被想起会让它以后更容易被想起 |
-| `serene_state` | 调试用：三层数值、余震、最近事件、疤、今天的主动额度、此刻的作息与精神、外面、看法、观察 |
+| `serene_state` | 调试用：三层数值、余震、最近事件、疤、今天的主动额度、此刻的作息与精神、外面、看法、观察、结晶条目和缺口 |
 | `serene_proactive` | 问「现在该不该主动开口」：理由、今日额度、不说时的替代动作 |
 | `serene_proactive_done` | 开口之后记一次；被拒了传 `rejected`，扣额度并冷却 |
-| `serene_status` | 诊断：插件是否真的挂上；加载失败时返回原因和修法 |
+| `serene_status` | 诊断：插件是否真的挂上、记忆与结晶各有多少条；加载失败时返回原因和修法 |
 
 事件类型：`chat / affection / address / intimacy / kiss / tease / care / humor / share /
 question / goodnight / rejection / neglect / conflict / repair / scold / coax / jealousy /
@@ -823,6 +960,10 @@ cold_read / warm_read / moved / disclose / suppress`。
 `weather.json`：最近一次报进来的天气，三小时后自动当没有。
 
 `introspect.json`：哪一晚已经自省过、那晚收拢出的一小段。
+
+`lessons.jsonl`：一行一条经验，由 owner 追加；`status` 改成 `retired` / `merged` 就不再进 prompt，但不删。
+`dispositions.json`：一个小 JSON，`items` 里最多 8 条想事情的路子；`status` 改成 `retired` / `revoked` 同理。
+这两个文件由你自己维护，插件只读——没有自动观察、没有后果账本、没有让模型写自己的入口。
 
 这些文件都是你的：可以备份、可以手改、可以删。删掉就是从没发生过。
 
@@ -948,7 +1089,7 @@ personas/zhiyao/
 
 ```bash
 npm install          # 只装 devDependencies（schemastery / dsh-tools）
-npm test             # node --test，142 个用例（含网页版的演示流程）
+npm test             # node --test，214 个用例（含网页版的演示流程）
 npm run web          # 本机启动网页版
 npm run web:demo     # 演示模式，不联网、不需要 key
 npm run demo         # 十天情绪时间线（纯函数，不调模型）
@@ -971,6 +1112,7 @@ core/weather.js           纯函数：天气码、读数归一化、新鲜度、
 core/beliefs.js           纯函数：她自己的看法（会被一次事件推动，不会翻面）
 core/profile.js           纯函数：她注意到的他（六个维度，种子为空）
 core/introspect.js        纯函数：夜里的自省（只收拢已有的东西）
+core/crystal.js           纯函数：经验 / 想事情的路子（三道闸门、渲染、按触发词挑一条）
 src/stores/emotion-store.js     唯一碰磁盘的地方（原子写）
 src/stores/memory-store.js      jsonl 追加、容量、召回
 src/stores/motivation-store.js  今天的额度与 hold
@@ -979,10 +1121,11 @@ src/stores/belief-store.js      看法落盘
 src/stores/profile-store.js     观察落盘
 src/stores/weather-store.js     天气读数与过期
 src/stores/introspect-store.js  一晚一次的自省
+src/stores/crystal-store.js    只读 lessons.jsonl / dispositions.json，按 mtime 热加载
 src/persona.js            人格档案（单文件 / 目录）→ prompt 段
 src/prompt.js             常驻 prompt 段：人格 +【此刻】+【外面】+ 首启 + 记着的
 src/opening.js            首启只说一次：pending → opened
-src/tools.js              17 个工具（含 serene_status 诊断、serene_crisis 底线）
+src/tools.js              18 个工具（含 serene_status 诊断、serene_crisis 底线、serene_crystal 经验）
 src/index.js              name / inject / Config / apply
 web/server.mjs            网页版：本地 HTTP、API、静态文件（唯一调模型的外壳）
 web/lib/runtime.mjs       把 core/ 和 stores/ 接成一局对话，并写 trace
@@ -1017,6 +1160,7 @@ grep -n "node:fs\|process.env\|fetch(" core/*.js   # 应该没有输出
 | 主动开口的预算、hold 和替代动作 | 不自己发消息（网页版的 `web/server.mjs` 才发） |
 | 读人格档案、拼 prompt 段 | 不读 `.env`、凭证、聊天记录原文 |
 | 原子写状态文件，可手改、可进 git | 不联网、不上报、不采集屏幕 |
+| 读 `lessons.jsonl` / `dispositions.json`，按触发词挑一条经验 | 不观察后果、不自动沉淀经验、不让模型写自己的经验 |
 
 **回环不是权限。** 网页版只监听 `127.0.0.1`，但本机浏览器里任何一个网页都能向这个端口发请求，
 DNS rebinding 也能把 `evil.example` 指过来。所以每个请求进路由之前先过三道纯判断：

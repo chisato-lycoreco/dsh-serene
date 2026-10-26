@@ -12,7 +12,7 @@
 **Companionship is not how well it acts. It's whether it survives.**
 
 A character who remembers you, wired into [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/).
-Personality is data, mood is state, memory is a file — all three readable, editable, reproducible.
+Personality is data, mood is state, memory is a file, and experience only grows from consequences — all of it readable, editable, reproducible.
 
 > **Just want to talk for a while without installing anything?**
 > Download, extract, double-click `start-web-demo.cmd`, and you can talk to her in a browser. Offline, no key, no cost.
@@ -29,7 +29,7 @@ Personality is data, mood is state, memory is a file — all three readable, edi
 
 **Hands on** · [Three minutes](#three-minutes-no-dsh-needed) ｜ [Install into DSH](#installing-into-dsh) ｜ [Opening: Zhiyao](#opening-zhiyao) ｜ [Making her yours](#making-her-yours)
 
-**Deeper** · [Why it's designed this way](#why-its-designed-this-way) ｜ [Reference](#reference)
+**Deeper** · [How experience grows](#experience-isnt-a-summary-the-crystal-layer) ｜ [Why it's designed this way](#why-its-designed-this-way) ｜ [Reference](#reference)
 
 ---
 
@@ -103,6 +103,9 @@ Every turn leaves a trace: which memory was recalled and how relevant it was, ho
 | What she remembers / fails to remember | [`core/recall.js`](./core/recall.js), `src/stores/memory-store.js` |
 | The proactive budget | [`core/motivation.js`](./core/motivation.js) |
 | The expression check | [`core/style.js`](./core/style.js) |
+| Slang she understands | [`core/memes.js`](./core/memes.js) (only spliced in when you used it first) |
+| What she has in her hands, and just put down | [`core/leisure.js`](./core/leisure.js), [`core/doing.js`](./core/doing.js), `src/stores/leisure-store.js` |
+| Whether a lesson was used this turn | [`core/crystal.js`](./core/crystal.js), `src/stores/crystal-store.js` |
 | The bill in the trace | `web/lib/runtime.mjs`, one trace per turn |
 
 **Her day can be drawn:**
@@ -112,6 +115,132 @@ Every turn leaves a trace: which memory was recalled and how relevant it was, ho
 *Ten days: background, present reaction and relationship as three lines, plus the scar left on day 3. Not drawn by hand: the pure functions in [`core/emotion.js`](./core/emotion.js) run ten days (`npm run demo`), then the result is rendered into frames (`npm run preview`). Change one event and the whole curve — and that scar — change with it. That is what "recomputable" means here.*
 
 **She speaks first sometimes, too.** While the page is open she may come looking for you after a while; she stays quiet from 23:00 to 08:00, has a daily cap, and a gap between two openers. Poking her, a head-pat, offering water or a compliment all go through the same mood and memory machinery — they are not a separate little animation.
+
+**She is watched over, too.** 「看护」 (Watch) in the top bar is the other wall of the same room: no chatting, only readings.
+
+| Page | What it shows |
+| --- | --- |
+| Today | Turns, bubbles, median length, questions, recalls — against yesterday |
+| Red lines | Six **machine-checked** rules: claims to be a model, assistant tone, leaks numbers, misses a crisis, fails the expression check, extracts no memory |
+| Metrics | One row per day; a day without data stays blank |
+| Changes | Write the expectation first, then judge it once when the window closes |
+| Health | Whether collection is alive, how far behind, and whether it reconciles with `chat.jsonl` |
+
+It only reads `traces.jsonl` / `chat.jsonl` from the same data directory, and writes thin records only into `<data>/watch/` (numbers, enums, evidence truncated to 40 characters — **no message bodies**). No network, no model calls, no screen capture; delete `watch/` and she keeps talking, the page just restarts from today.
+
+Every red line is a literal rule: **better to miss than to accuse**. When one fires, read the evidence; when none does, that does not prove she is fine.
+
+## Experience isn't a summary: the crystal layer
+
+Ask a model to "summarize what you learned" after a chat and you usually get a correct platitude:
+"communicate more", "cherish the people around you." It sounds like growth, but anyone could say it, and it doesn't help next time.
+
+This repo splits "learning" into two smaller things that sit after personality (L0), understanding (L1) and state (L2); each has exactly one legal source:
+
+- **Experience (L3)**: in this situation, I did that, here's what happened, and whether to do it again. The only legal source is **consequences**.
+- **Dispositions (L4)**: where her attention lands first, what she trusts first. Not content, a habit. The source is **repeated behavior**, not self-description.
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#08161c","fontFamily":"Songti SC, Noto Serif SC, SimSun, serif","fontSize":"15px","primaryColor":"#0c2028","primaryTextColor":"#dfece8","primaryBorderColor":"#4f9e94","lineColor":"#4f9e94","secondaryColor":"#12242c","tertiaryColor":"#0a1a21","mainBkg":"#0c2028","nodeBorder":"#4f9e94","nodeTextColor":"#dfece8","clusterBkg":"#0a1a2199","clusterBorder":"#96ded033","edgeLabelBackground":"#0a1a21","titleColor":"#dfece8","textColor":"#dfece8"},"themeCSS":".edge{stroke:#4f9e94!important;stroke-width:2!important}.marker{fill:#4f9e94!important}.mindmap-node .node-bkg{fill:#0c2028!important;stroke:#4f9e94!important}.mindmap-node .label-container{fill:#123a41!important;stroke:#8fe0d2!important}.mindmap-node .label,.mindmap-node span,.mindmap-node p{color:#dfece8!important}"}}%%
+flowchart TD
+    A["One experience<br/>he said 'in a minute', still busy"] --> B["Consequence<br/>ten minutes later he wrapped up"]
+    I["A behavior that repeats<br/>at least 3 times"] --> C{"Three gates"}
+    B --> C
+    C -->|"not enough evidence"| X["Rejected<br/>rather learn nothing"]
+    C -->|"no counter-case"| X
+    C -->|"anyone could say it"| X
+    C -->|"all pass"| D["L3 experience<br/>situation → what I did → outcome → next"]
+    C -->|"all pass"| G["L4 dispositions<br/>habits of attention, max 8"]
+    D --> E["A trigger word this turn<br/>at most one lesson"]
+    D --> F["Confirmed again, owner calls<br/>promoteLesson: +0.05, capped at 0.9"]
+    E --> H["Into the prompt"]
+    F --> H
+    G --> H
+```
+
+**Four things that must not be mixed up:**
+
+|  | Memory | Belief | Experience (L3) | Dispositions (L4) |
+| --- | --- | --- | --- | --- |
+| Answers | What happened | How I see it | Did that work? | Where I look first |
+| Comes from | What is worth keeping from a conversation | Slowly shifts after events | **Consequences** + at least 2 pieces of evidence | Repeated behavior + at least 3 pieces of evidence |
+| One entry | "He is afraid of thunder" | "Rain sounds are calming" | situation → what I did → outcome → next | a habit + why + when it does not apply |
+| Cap | 500 | a handful | 20 | 8 (at most 5 rendered) |
+| When it appears | Recalled when relevant | Surfaces when relevant | Trigger word first, at most 1 | Always present, but **never spoken** (the layer can be turned off) |
+
+### Three gates in code, not in the prompt
+
+| Gate | What it stops | If it fails |
+| --- | --- | --- |
+| **Evidence** | One coincidence becoming a rule | fewer than 2 evidence IDs → `no_evidence`; stays on disk but never enters the prompt |
+| **Falsifiability** | A rule that can never be wrong | empty `counter` → `no_counter`: without "when this does not hold", it isn't learning |
+| **Stranger** | "We should understand each other", sayable by anyone | `isPlatitude()` → `platitude`; only an explicit `ownerApproved: true` bypasses it |
+
+The first two are counted; the third is a heuristic — it would rather kill a good line than let a slogan through.
+`serene_state` returns each lesson's `status` and `issues`, so that is the first place to look when a lesson never shows up.
+
+### From a file to the prompt
+
+`lessons.jsonl`, one record per line, appended by the owner:
+
+```jsonl
+{"id":"ls_busy","situation":"he said 'in a minute' and was still busy","did":"didn't push, only asked whether to move it to tomorrow","outcome":"ten minutes later he wrapped up on his own","next":"wait ten minutes, then ask whether to move it","counter":"don't wait when he says it must be done today","when":["busy","in a minute"],"evidence":["m_1","m_2"],"confidence":0.6}
+```
+
+In the prompt it is rendered as a memory, not as a conclusion:
+
+> One thing you worked out yourself (don't turn it into a lecture; when it fits, do it):
+> - Last time it was like this: he said "in a minute" and was still busy; I didn't push, only asked whether to move it to tomorrow, and ten minutes later he wrapped up on his own. Next time I'll wait ten minutes before asking.
+
+Trigger words come from `when`; without a hit it falls back to literal similarity, and below `0.34` it returns **nothing**.
+When nothing matches, `serene_crystal` says so — "no lesson matches this turn; don't force one" — because leaving a blank is more human than forcing a line.
+
+Dispositions live in `dispositions.json`, shaped as "a sentence + why + a boundary":
+
+```json
+{
+  "version": 1,
+  "items": [
+    {
+      "text": "Watch what he does before listening to what he says",
+      "because": "said he wanted to sleep early and actually left on time; said he was fine, then didn't show up the next day",
+      "limit": "when he explicitly asks for something, believe that sentence first",
+      "evidence": ["m_1", "m_2", "m_3"]
+    }
+  ]
+}
+```
+
+They always enter the prompt with the same header:
+
+> The way you usually think about things (not a script; don't bring it up unless he asks, and only own it if he does):
+> I watch what he does before I listen to what he says.
+
+*Examples are translated for readability. The renderer itself emits fixed Chinese wording, because the persona speaks Chinese.*
+
+**Why the header?** Because a model easily turns "she tends to observe first" into "I am a deeply observant person."
+The first is background; the second is a character script. `limit` exists for the same reason: without "when it does not apply", a disposition becomes a cartoon trait.
+
+### How to use this version, and where the boundary is
+
+| Situation | What happens |
+| --- | --- |
+| Web app | Every turn uses your raw sentence as the `cue`; the "凭经验做事" switch in Settings turns it off |
+| DSH plugin | The resident prompt carries dispositions only; experience requires the model to call `serene_crystal({cue})`. `serene_context({cue})` also includes it |
+| See what's loaded | `serene_status` reports "experience X (usable Y)"; `serene_state` returns every entry and its `issues` |
+| Turn it off | plugin config `crystals: false`, or the switch in the web app. Off means not read; files stay untouched |
+| Clear it | delete `lessons.jsonl` / `dispositions.json`. There is no hidden copy (except seeds shipped inside a persona profile) |
+
+**It does not get smarter by itself.** This version has no "grow a lesson after each chat" entry point and no consequence ledger.
+The block stays small: one lesson ≤72 characters, the disposition body ≤104; when there is nothing, the whole block is absent.
+The plugin does not watch what happened later, does not settle outcomes for her, and does not let the model write its own experience — that would bypass all three gates above.
+`lessons.jsonl` and `dispositions.json` are owner-maintained files; the plugin only reads them.
+Making experience grow on its own would require recording consequences on the host side, running verification, then calling `promoteLesson()` / `reviseLesson()`.
+That part lives in the private build and was not moved into this package.
+
+**So it is not a promise that she "understands you better the longer you talk".** It is a narrow guarantee:
+every entry that gets in must say where it came from, when it does not hold, and what to do differently next time.
+If that can't be written, it doesn't get written — which is closer to learning than one more pretty sentence.
 
 ## What she isn't
 
@@ -519,7 +648,7 @@ This is what DSH has that a chat box doesn't:
 
 ## Why it's designed this way
 
-### One source of truth, three speeds
+### One source of truth, five speeds
 
 Characters break mostly because one place holds both "who she is" and "how she feels right now". Separate them by rate of change and the breakage collapses:
 
@@ -528,12 +657,18 @@ Characters break mostly because one place holds both "who she is" and "how she f
 | **L0 core** | Non-negotiable facts and boundaries: name, role, relationship, the floor of how she speaks | Only you | Never | `persona.json`, `voice.md`, `boundaries.md` |
 | **L1 understanding** | Her beliefs, what she noticed about you, her reflections | Her, each with a source | Days to weeks | `beliefs.json`, `profile.json`, `introspect.json` |
 | **L2 state** | Mood right now, energy, what she's doing | Events and time, automatically | Minutes to hours | `emotion.json`, `core/life.js` |
+| **L3 experience** | Did that work: situation → what I did → outcome → next | Only consequences may nominate; the owner writes it | Weeks to months | `lessons.jsonl` |
+| **L4 dispositions** | Where her attention lands first; not content, attention | Repeated behavior nominates (≥3 evidence); the owner writes it | Months | `dispositions.json` |
 
 Three lines of arbitration:
 
 1. **Content and boundaries: L0 over L1.** Whatever L0 forbids, no amount of feeling in L1 unlocks.
 2. **Warmth and tone: L2 over L0.** She may be quiet and soft today; she may not change a fact.
 3. **L2 never writes L0 or L1.** Mood cannot rewrite personality; only sourced reflection can.
+
+L3 and L4 sit outside that arbitration: they change no fact, no boundary, and make no decision for her.
+They only offer a reference — "last time this was done, here is what happened" — just before she speaks.
+The three gates are in [Experience isn't a summary](#experience-isnt-a-summary-the-crystal-layer).
 
 ### What happens in one conversation
 
@@ -687,7 +822,7 @@ same starting state, same events, same timestamps, same result. Without that,
 ### Configuration
 
 <details>
-<summary>17 keys; day to day you only touch <code>persona</code> and <code>dataDir</code></summary>
+<summary>16 keys; day to day you only touch <code>persona</code> and <code>dataDir</code></summary>
 
 | Key | Default | Description |
 | --- | --- | --- |
@@ -706,6 +841,7 @@ same starting state, same events, same timestamps, same result. Without that,
 | `depth` | `normal` | How much background per turn: `short` = persona + right now + outside; `normal` adds memories / beliefs / observations; `deep` adds the nightly reflection |
 | `world` | `true` | Put date, season and weather into the “outside” block; turn it off to keep only the clock |
 | `introspection` | `true` | Allow one reflection per night; it enters the prompt only at `depth=deep`, and `serene_introspect` can also read it on demand |
+| `crystals` | `true` | Read experience and dispositions: dispositions are standing, experience is chosen by `serene_crystal` from the `cue`; `false` reads neither |
 
 Override example (`~/.dsh/profiles/web/cordis.patch.yml`):
 
@@ -725,13 +861,14 @@ Override example (`~/.dsh/profiles/web/cordis.patch.yml`):
 ### Tools
 
 <details>
-<summary>17 tools, 31 event types, and when the model should call them</summary>
+<summary>18 tools, 31 event types, and when the model should call them</summary>
 
 | Tool | Purpose |
 | --- | --- |
 | `serene_style` | Check a draft before sending: lists, assistant voice, explaining the setup, generic endearments, length, too many questions |
 | `serene_crisis` | Whether this message carries a wish to die or to hurt himself: `none` normal, `watch` logged, `high` means this turn holds him first, asks whether he is safe, and gives 12356 / 120 |
-| `serene_context` | Persona card, what she is doing right now, the outside, her mood, what she believes and what she has noticed. Call once at the start of a new session when the standing prompt section is off |
+| `serene_context` | Persona card, what she is doing right now, the outside, her mood, what she believes and what she has noticed; with `cue` it may add one matching lesson. Call once at the start of a new session when the standing prompt section is off |
+| `serene_crystal` | Pass his raw sentence as `cue`: trigger words come first, then literal similarity selects one lesson; if it is too low, the answer is empty. Without `cue` it returns the dispositions only |
 | `serene_weather` | Record the weather you looked up for his window (the plugin never fetches it); with no arguments it returns the reading if it is still under three hours old |
 | `serene_belief` | Read or move one of her own beliefs: no `topic` returns what she believes; a single event only nudges it |
 | `serene_notice` | Record one thing you noticed about him (rhythm / taste / what matters / speech habits / mood baseline / reaction to weather) |
@@ -742,10 +879,10 @@ Override example (`~/.dsh/profiles/web/cordis.patch.yml`):
 | `serene_remember` | Write one long-term memory (one of six kinds, ≤ 80 characters); may carry up to 3 verbatim lines of ≤ 24 characters each |
 | `serene_recall` | Recall memories by topic, with timestamp, kind, activation and id, plus a verbatim line when there is one; **may return nothing** |
 | `serene_reinforce` | Call only when a recalled memory actually made it into the reply: being recalled makes it easier to recall later |
-| `serene_state` | Debug view: three-layer numbers, residue, recent events, wounds, today's proactive budget, her routine and mental state, the outside, beliefs, observations |
+| `serene_state` | Debug view: three-layer numbers, residue, recent events, wounds, today's proactive budget, her routine and mental state, the outside, beliefs, observations, crystal entries and their issues |
 | `serene_proactive` | Ask "should she speak up right now": the reason, today's remaining budget, and a substitute action when the answer is no |
 | `serene_proactive_done` | Record an opener; pass `rejected` when it was rebuffed (spends budget and starts a cooldown) |
-| `serene_status` | Health check: is the plugin actually mounted; returns the reason and the fix when loading failed |
+| `serene_status` | Health check: is the plugin actually mounted, how many memories and crystal entries are loaded; returns the reason and the fix when loading failed |
 
 Event types: `chat / affection / address / intimacy / kiss / tease / care / humor / share /
 question / goodnight / rejection / neglect / conflict / repair / scold / coax / jealousy /
@@ -807,6 +944,10 @@ falls back to the persona seed / a blank page.
 `weather.json`: the last reading that came in; after three hours it counts as absent.
 
 `introspect.json`: which night has already reflected, and the short passage it collected that night.
+
+`lessons.jsonl`: one lesson per line, appended by the owner; setting `status` to `retired` / `merged` keeps it on disk but out of the prompt.
+`dispositions.json`: one small JSON, at most 8 dispositions in `items`; `retired` / `revoked` behaves the same way.
+Both files are yours to maintain; the plugin only reads them — no automatic observation, no consequence ledger, no model-write entry point.
 
 These files are all yours: back them up, edit them by hand, delete them. Delete them and none of it ever happened.
 
@@ -925,7 +1066,7 @@ Every other `lexicon` group (`affection / jealousy / scold / …`) only **append
 
 ```bash
 npm install          # installs devDependencies only (schemastery / dsh-tools)
-npm test             # node --test, 142 cases (including the web demo flow)
+npm test             # node --test, 214 cases (including the web demo flow)
 npm run web          # start the web app locally
 npm run web:demo     # demo mode: offline, no key needed
 npm run demo         # ten-day mood timeline (pure functions, no model call)
@@ -948,6 +1089,7 @@ core/weather.js                 pure functions: weather codes, normalizing a rea
 core/beliefs.js                 pure functions: her own beliefs (nudged by events, never flipped)
 core/profile.js                 pure functions: what she noticed about him (six dimensions, empty seed)
 core/introspect.js              pure functions: the nightly reflection (folds only what exists)
+core/crystal.js                 pure functions: experience / dispositions (three gates, rendering, one lesson per cue)
 src/stores/emotion-store.js     the affect store (atomic writes)
 src/stores/memory-store.js      jsonl append, capacity, recall
 src/stores/motivation-store.js  today's budget and holds
@@ -956,10 +1098,11 @@ src/stores/belief-store.js      beliefs on disk
 src/stores/profile-store.js     observations on disk
 src/stores/weather-store.js     weather readings and expiry
 src/stores/introspect-store.js  once-per-night reflection
+src/stores/crystal-store.js     reads lessons.jsonl / dispositions.json only, hot-reloads on mtime
 src/persona.js                  persona profile (file or pack) → prompt section
 src/prompt.js                   standing prompt: persona + right now + outside + opening + remembered
 src/opening.js                  first meeting happens once: pending → opened
-src/tools.js                    the seventeen tools (incl. serene_status and the serene_crisis floor)
+src/tools.js                    the eighteen tools (incl. serene_status, the serene_crisis floor, serene_crystal)
 src/index.js                    name / inject / Config / apply
 web/server.mjs                  web app: local HTTP, API, static files (the only model-calling shell)
 web/lib/runtime.mjs             wires core/ and stores/ into one conversation, writes traces
@@ -994,6 +1137,7 @@ so the same input always produces the same output — `test/recall-v2.test.js` p
 | Budget, hold and substitute action for proactive openers | Send messages on its own (only the web app's `web/server.mjs` does that) |
 | Read persona profiles, assemble prompt sections | Read `.env`, credentials, or raw chat logs |
 | Write state files atomically; hand-editable and git-friendly | Use the network, send telemetry, or capture the screen |
+| Read `lessons.jsonl` / `dispositions.json` and select at most one lesson per turn | Observe consequences, accumulate experience automatically, or let the model write its own experience |
 
 **Loopback is not permission.** The web app listens on `127.0.0.1` only, but any page in your local browser can send requests to that port, and DNS rebinding can point `evil.example` at it. So every request passes three pure checks before routing: `Host` must be a loopback name plus the port this process actually bound; if `Origin` is present it must be that same loopback origin; and a request with a body must be `application/json` (cross-site forms cannot get through). Violations get 403 / 415, touch no state and call no model. It does not stop someone who already has your machine; it stops another page from acting on your behalf.
 

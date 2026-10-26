@@ -11,7 +11,10 @@
 
 import { almanacAt, almanacBlock } from "../../core/almanac.js";
 import { CRISIS_BLOCK } from "../../core/crisis.js";
+import { crystalBlock } from "../../core/crystal.js";
+import { doingBlock, doingView } from "../../core/doing.js";
 import { lifeAt, lifeBlock } from "../../core/life.js";
+import { matchMemes, memeBlock } from "../../core/memes.js";
 import { mentalAt, mentalLine } from "../../core/mental.js";
 import { buildSereneSection } from "../../src/prompt.js";
 
@@ -54,6 +57,9 @@ export function buildChatSystem({
   depth = "normal",
   asleep = false,
   crisis = null,
+  userText = "",
+  leisure = [],
+  crystals = null,
 } = {}) {
   const life = safe(() => lifeAt(now, { seed: persona.id, routine: persona.routine }), null);
   const sections = [];
@@ -75,6 +81,13 @@ export function buildChatSystem({
     "",
   );
   push(sections, "人格 / 此刻 / 外面 / 记着的", core);
+
+  // 网页版拿得到这一轮的原话，所以经验可以自动按触发词挑；插件版没有这个入口，
+  // 那边要模型自己调 `serene_crystal`。想事情的路子两边都常驻。
+  if (depth !== "short") {
+    const crystal = safe(() => crystalBlock(crystals, { cue: userText }), "");
+    if (crystal) push(sections, "经验与想事情的路子", crystal);
+  }
 
   if (emotion) {
     const snapshot = safe(() => emotion.snapshot({ now, asleep }), null);
@@ -100,6 +113,16 @@ export function buildChatSystem({
       `【这会儿想起来的】\n${lines}\n这些只是可能相关，不一定要说出口；不要逐条复述，也不要为了用上它而硬拐话题。`,
     );
   }
+
+  // 手上真有一件（消遣记录里正在进行的）才说，不用作息顶替——作息那段已经写了此刻。
+  const doing = safe(() => doingView({ life, leisure, now }), null);
+  const doingLine =
+    doing && ["movie", "video", "music", "game", "book"].includes(doing.now?.kind) ? doingBlock(doing) : "";
+  if (doingLine) push(sections, "手上", doingLine);
+
+  // 他用了梗才接：这一块只在文字里真的出现时才拼进来，不常驻。
+  const memes = safe(() => memeBlock(userText, { limit: 2 }), "");
+  if (memes) push(sections, "他话里的说法", `【他话里的说法】\n${memes}`);
 
   push(sections, "聊天约定", CHAT_RULES);
   if (asleep) push(sections, "她在睡", ASLEEP_RULE);

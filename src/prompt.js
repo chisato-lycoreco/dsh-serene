@@ -11,6 +11,7 @@
  *   3. 外面（年月日、季节、天气）：core/almanac.js + core/weather.js
  *   4. 第一次见面（只在首启用一次）：人格包里的 opening.md
  *   5. 她相信的 / 注意到的 / 夜里：core/beliefs.js、core/profile.js、core/introspect.js
+ *   6. 经验与想事情的路子：core/crystal.js（经验只在有 cue 时挑一条）
  *
  * 这一段不写数值、不写层名、不写「你是 AI」。它只描述，不解释。
  * 深度（depth）只决定给多少背景，不是让模型「多想」：
@@ -21,6 +22,7 @@
 
 import { almanacAt, almanacBlock } from "../core/almanac.js";
 import { beliefsLine, mergeBeliefs } from "../core/beliefs.js";
+import { crystalBlock } from "../core/crystal.js";
 import { lifeAt, lifeBlock } from "../core/life.js";
 import { mentalAt, mentalLine } from "../core/mental.js";
 import { profileLine } from "../core/profile.js";
@@ -66,6 +68,8 @@ export function normalizeDepth(value) {
  * @param {object} [params.opening] OpeningStore（有 pending() 和 markOpened()）
  * @param {Array} [params.beliefs] 学到的看法（人格种子会自动合并）
  * @param {Array} [params.profile] 他注意到的事
+ * @param {{lessons?: object[], dispositions?: object[]}} [params.crystals] 结晶层（经验 + 想事情的路子）
+ * @param {string} [params.cue] 这一轮对方说的话；有它才可能挑出一条经验
  * @param {object|null} [params.weather] 还新鲜的天气读数
  * @param {string} [params.reflection] 夜里的自省（只有 deep 会用到）
  * @param {string} [params.depth]
@@ -81,6 +85,8 @@ export function buildSereneSection({
   opening = null,
   beliefs = [],
   profile = [],
+  crystals = null,
+  cue = "",
   weather = null,
   reflection = "",
   depth = "normal",
@@ -123,6 +129,9 @@ export function buildSereneSection({
 
     const noticed = safe(() => profileLine(profile), "");
     if (noticed) blocks.push(noticed);
+
+    const crystal = safe(() => crystalBlock(crystals, { cue }), "");
+    if (crystal) blocks.push(crystal);
 
     const memories = safe(() => recentMemories(memory, 3), []);
     if (memories.length) blocks.push(`【你记着的】${memories.join("；")}`);

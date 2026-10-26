@@ -5,7 +5,9 @@ import { once } from "node:events";
 import { createServer, request as httpRequest } from "node:http";
 import { mkdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { splitBubbles } from "../web/lib/prompt.mjs";
+import { buildChatSystem, splitBubbles } from "../web/lib/prompt.mjs";
+import { normalizeDisposition, normalizeLesson } from "../core/crystal.js";
+import { loadPersona } from "../src/persona.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const DATA = join(ROOT, ".dev-data", `web-test-${process.pid}`);
@@ -81,6 +83,46 @@ test("拆气泡：空行优先，超过上限就并进最后一条，不丢字",
   const bubbles = splitBubbles(longLines, { max: 3 });
   assert.equal(bubbles.length, 3);
   assert.equal(bubbles.join("").replace(/\s/g, ""), longLines.replace(/\s/g, ""));
+});
+
+test("网页版 prompt：经验按原话自动挑，想事情的路子单独成段", () => {
+  const persona = loadPersona("zhiyao", { root: join(ROOT, "personas") });
+  const crystals = {
+    lessons: [
+      normalizeLesson({
+        id: "ls_busy",
+        situation: "他说马上，人还在忙",
+        did: "没催，只问要不要把事挪到明天",
+        outcome: "十分钟后他自己收了",
+        next: "先等十分钟，再问要不要挪",
+        counter: "他明确说今天必须做完时别等",
+        when: ["在忙", "马上"],
+        evidence: ["m_1", "m_2"],
+        confidence: 0.6,
+      }),
+    ],
+    dispositions: [
+      normalizeDisposition({
+        id: "dp_watch",
+        text: "先看他做了什么，再听他说了什么",
+        because: "说想早睡，到点真走了；嘴上说没事，第二天还是没来",
+        limit: "他明确开口要什么时，先信那句话",
+        evidence: ["m_1", "m_2", "m_3"],
+      }),
+    ],
+  };
+
+  const hit = buildChatSystem({ persona, now: Date.parse("2026-10-24T12:40:00Z"), userText: "我还在忙", crystals });
+  assert.ok(hit.sections.some((section) => section.name === "经验与想事情的路子"));
+  assert.match(hit.system, /上回这种时候/);
+  assert.match(hit.system, /不是台词，不问就不提/);
+
+  const idle = buildChatSystem({ persona, now: Date.parse("2026-10-24T12:40:00Z"), userText: "今天天气不错", crystals });
+  assert.doesNotMatch(idle.system, /上回这种时候/);
+  assert.match(idle.system, /先看他做了什么/);
+
+  const short = buildChatSystem({ persona, now: Date.parse("2026-10-24T12:40:00Z"), depth: "short", userText: "我还在忙", crystals });
+  assert.ok(!short.sections.some((section) => section.name === "经验与想事情的路子"));
 });
 
 test("网页版：演示模式完整走一轮，接口不泄露 key", async (t) => {

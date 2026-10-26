@@ -58,14 +58,15 @@ test("入口契约：name / inject / Config / apply 都在", () => {
   assert.equal(typeof apply, "function");
 });
 
-test("挂载后注册 17 个工具，名字都带前缀", (t) => {
+test("挂载后注册 18 个工具，名字都带前缀", (t) => {
   const { ctx, tools } = fakeContext();
   apply(ctx, { dataDir: tempDir(t) });
-  assert.equal(tools.size, 17);
+  assert.equal(tools.size, 18);
   for (const toolName of [
     "serene_style",
     "serene_crisis",
     "serene_context",
+    "serene_crystal",
     "serene_weather",
     "serene_belief",
     "serene_notice",
@@ -95,6 +96,68 @@ test("serene_status：正常时能报出人格、数据目录和记忆条数", a
   assert.match(text, /人格：小满/);
   assert.ok(text.includes(dir));
   assert.match(text, /长期记忆：0\/500 条/);
+});
+
+test("结晶：经验按触发词挑，想事情的路子常驻", async (t) => {
+  const dir = tempDir(t);
+  writeFileSync(
+    join(dir, "lessons.jsonl"),
+    `${JSON.stringify({
+      id: "ls_busy",
+      situation: "他说马上，人还在忙",
+      did: "没催，只问要不要把事挪到明天",
+      outcome: "十分钟后他自己收了",
+      next: "先等十分钟，再问要不要挪",
+      counter: "他明确说今天必须做完时别等",
+      when: ["在忙", "马上"],
+      evidence: ["m_1", "m_2"],
+      confidence: 0.6,
+    })}\n`,
+    "utf8",
+  );
+  writeFileSync(
+    join(dir, "dispositions.json"),
+    JSON.stringify({
+      version: 1,
+      items: [
+        {
+          id: "dp_watch",
+          text: "先看他做了什么，再听他说了什么",
+          because: "说想早睡，到点真走了；嘴上说没事，第二天还是没来",
+          limit: "他明确开口要什么时，先信那句话",
+          evidence: ["m_1", "m_2", "m_3"],
+        },
+      ],
+    }),
+    "utf8",
+  );
+
+  const { ctx, tools } = fakeContext();
+  apply(ctx, { dataDir: dir });
+  const crystal = tools.get("serene_crystal");
+  const hit = await crystal.execute({ cue: "我还在忙" }, {});
+  assert.match(hit, /你自己试出来的一件事/);
+  assert.match(hit, /先等十分钟/);
+  const miss = await crystal.execute({ cue: "今天天气不错" }, {});
+  assert.doesNotMatch(miss, /你自己试出来的一件事/);
+  assert.match(miss, /你平时想事情的路子/);
+
+  const parsed = JSON.parse(await tools.get("serene_state").execute({}, {}));
+  assert.equal(parsed.crystal.lessonsReady, 1);
+  assert.equal(parsed.crystal.dispositionsReady, 1);
+  assert.deepEqual(parsed.crystal.lessons[0].issues, []);
+  assert.deepEqual(parsed.crystal.dispositions[0].issues, []);
+  const status = await tools.get("serene_status").execute({}, {});
+  assert.match(status, /经验 1 条（可用 1）/);
+});
+
+test("crystals=false：不注册 serene_crystal，常驻 prompt 也不带", (t) => {
+  const { ctx, tools, sections } = fakeContext();
+  apply(ctx, { dataDir: tempDir(t), crystals: false });
+  assert.equal(tools.has("serene_crystal"), false);
+  assert.equal(tools.size, 17);
+  const text = sections[0].text({});
+  assert.doesNotMatch(text, /不是台词/);
 });
 
 test("工具能跑：记事件、回忆、读状态", async (t) => {

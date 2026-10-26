@@ -359,6 +359,13 @@ svg {
   background: rgba(143, 224, 210, 0.06);
 }
 
+/* 「看护」那个入口是个链接，不是按钮：别带下划线。 */
+a.pill {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
 .panel-toggle {
   display: none;
 }

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { loadPersona } from "../src/persona.js";
 import { buildSereneSection, normalizeDepth, recentMemories } from "../src/prompt.js";
+import { normalizeDisposition, normalizeLesson } from "../core/crystal.js";
 
 const root = fileURLToPath(new URL("../personas", import.meta.url));
 const zhiyao = loadPersona("zhiyao", { root });
@@ -27,6 +28,43 @@ test("外面有天气时多一行；语气是「背景」不是「播报」", ()
   assert.match(text, /天气：外面在下小雨，20℃/);
   assert.match(text, /天已经黑了/);
   assert.match(text, /不用主动报天气/);
+});
+
+test("结晶：想事情的路子常驻，经验只在有 cue 时挑一条", () => {
+  const crystals = {
+    lessons: [
+      normalizeLesson({
+        id: "ls_busy",
+        situation: "他说马上，人还在忙",
+        did: "没催，只问要不要把事挪到明天",
+        outcome: "十分钟后他自己收了",
+        next: "先等十分钟，再问要不要挪",
+        counter: "他明确说今天必须做完时别等",
+        when: ["在忙", "马上"],
+        evidence: ["m_1", "m_2"],
+        confidence: 0.6,
+      }),
+    ],
+    dispositions: [
+      normalizeDisposition({
+        id: "dp_watch",
+        text: "先看他做了什么，再听他说了什么",
+        because: "说想早睡，到点真走了；嘴上说没事，第二天还是没来",
+        limit: "他明确开口要什么时，先信那句话",
+        evidence: ["m_1", "m_2", "m_3"],
+      }),
+    ],
+  };
+  const idle = buildSereneSection({ persona: zhiyao, now, crystals });
+  assert.match(idle, /不是台词，不问就不提/);
+  assert.doesNotMatch(idle, /上回这种时候/);
+
+  const hit = buildSereneSection({ persona: zhiyao, now, crystals, cue: "我还在忙" });
+  assert.match(hit, /上回这种时候/);
+  assert.match(hit, /先等十分钟/);
+
+  const short = buildSereneSection({ persona: zhiyao, now, depth: "short", crystals });
+  assert.doesNotMatch(short, /不是台词/);
 });
 
 test("depth=short：只留人格、此刻、外面", () => {

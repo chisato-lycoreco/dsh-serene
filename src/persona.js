@@ -25,12 +25,14 @@
  *                        不给就用普通人的作息
  *   hemisphere  string   "north"（默认）或 "south"：季节按哪边算
  *   beliefs     object[] 她本来就有的看法 [{topic, stance, confidence}]
+ *   crystals    object   结晶层种子 { lessons: [], dispositions: [] }，见 core/crystal.js
  *   baseline    object   三层初始状态，缺省用 core 的 BASELINE
  */
 
 import { readFileSync, statSync } from "node:fs";
 import { basename, isAbsolute, join } from "node:path";
 import { normalizeBeliefs } from "../core/beliefs.js";
+import { normalizeCrystals } from "../core/crystal.js";
 import { BASELINE, normalizeLayer } from "../core/emotion.js";
 import { normalizeRoutine } from "../core/life.js";
 import { LEXICON_GROUPS } from "../core/lexicon.js";
@@ -89,6 +91,7 @@ export function definePersona(raw, { path = "", dir = null } = {}) {
     routine: normalizeRoutine(raw?.routine),
     hemisphere: raw?.hemisphere === "south" ? "south" : "north",
     beliefs: normalizeBeliefs(raw?.beliefs),
+    crystals: normalizeCrystals(raw?.crystals),
     lexicon,
     baseline: {
       background: normalizeLayer(raw?.baseline?.background, BASELINE.background),

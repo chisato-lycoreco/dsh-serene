@@ -17,6 +17,7 @@ import { buildSereneSection } from "./prompt.js";
 import { OpeningStore } from "./opening.js";
 import { EmotionStore } from "./stores/emotion-store.js";
 import { BeliefStore } from "./stores/belief-store.js";
+import { CrystalStore } from "./stores/crystal-store.js";
 import { ProfileStore } from "./stores/profile-store.js";
 import { WeatherStore } from "./stores/weather-store.js";
 import { IntrospectStore } from "./stores/introspect-store.js";
@@ -49,6 +50,7 @@ export const Config = Schema.object({
   depth: Schema.string().default("normal").description("每轮给多少背景：short = 人格+此刻+外面；normal 再加记忆/看法/观察；deep 再加夜里的自省"),
   world: Schema.boolean().default(true).description("把年月日、季节（以及报进来的天气）写进【外面】"),
   introspection: Schema.boolean().default(true).description("允许夜里自省一次（只在 depth=deep 时进 prompt，也可用 serene_introspect 手动读）"),
+  crystals: Schema.boolean().default(true).description("读经验与想事情的路子：想事情的路子常驻，经验由 serene_crystal 按 cue 挑一条（触发词优先）"),
 });
 
 export function apply(ctx, config = {}) {
@@ -90,6 +92,8 @@ export function apply(ctx, config = {}) {
   const profile = new ProfileStore({ dir: dataDir });
   const weather = new WeatherStore({ dir: dataDir });
   const introspect = new IntrospectStore({ dir: dataDir });
+  // 结晶层是只读的：数据由 owner 写，插件只负责过闸门、挑一条、渲染。
+  const crystals = options.crystals ? new CrystalStore({ dir: dataDir, seeds: persona.crystals }) : null;
 
   // 夜里的自省：只有真的进了 prompt 才在收尾时记下这一晚，没显示就不算做过。
   let shownReflection = "";
@@ -124,6 +128,7 @@ export function apply(ctx, config = {}) {
       profile,
       weather,
       introspect,
+      crystals,
     });
   } catch (error) {
     const reason = `工具注册失败：${error.message}`;
@@ -154,6 +159,7 @@ export function apply(ctx, config = {}) {
             opening,
             beliefs: beliefs.beliefs,
             profile: profile.observations,
+            crystals: crystals?.data ?? null,
             weather: options.world ? weather.current(now) : null,
             reflection: reflectionFor(now),
             depth: options.depth,
@@ -240,6 +246,7 @@ function normalizeConfig(config = {}) {
     depth: normalizeDepth(raw.depth),
     world: raw.world !== false,
     introspection: raw.introspection !== false,
+    crystals: raw.crystals !== false,
   };
 }
 

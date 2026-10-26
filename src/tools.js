@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { almanacAt, almanacBlock, weatherLine } from "../core/almanac.js";
 import { beliefsLine, mergeBeliefs } from "../core/beliefs.js";
 import { CRISIS_BLOCK, detectCrisis } from "../core/crisis.js";
+import { crystalBlock, dispositionIssues, lessonIssues } from "../core/crystal.js";
 import { EVENT_EFFECTS } from "../core/emotion.js";
 import { inNightWindow, reflect } from "../core/introspect.js";
 import { lifeAt, lifeBlock } from "../core/life.js";
@@ -53,6 +54,7 @@ export function registerTools(
     profile = null,
     weather = null,
     introspect = null,
+    crystals = null,
   },
 ) {
   if (typeof defineTool !== "function") {
@@ -106,10 +108,12 @@ export function registerTools(
     defineTool({
       name: "serene_context",
       description:
-        "开始一段对话前先调用：返回她的人格卡、【此刻】在做什么、【外面】是哪一天什么季节，以及当下的情感状态、她相信的、她注意到的（自然语言，不含数值）。每次新会话只调一次就够。",
-      parameters: {},
+        "开始一段对话前先调用：返回她的人格卡、【此刻】在做什么、【外面】是哪一天什么季节，以及当下的情感状态、她相信的、她注意到的、她试出来的经验（自然语言，不含数值）。每次新会话只调一次就够。",
+      parameters: {
+        cue: { type: "string", description: "他刚说的那句话（可选）。带上才可能挑出一条对得上的经验。" },
+      },
       output: stringOutput,
-      async execute() {
+      async execute(args) {
         const now = Date.now();
         const life = lifeAt(now, { seed: persona.id, routine: persona.routine });
         const snapshot = emotion.snapshot({ now, asleep: life.asleep });
@@ -126,12 +130,33 @@ export function registerTools(
           if (believed) parts.push(believed);
           const noticed = profileLine(profile?.observations);
           if (noticed) parts.push(noticed);
+          const crystal = crystals ? crystalBlock(crystals.data, { cue: String(args?.cue ?? "") }) : "";
+          if (crystal) parts.push(crystal);
         }
         parts.push(snapshot.text);
         return parts.join("\n\n");
       },
     }),
   );
+
+  if (crystals) {
+    ctx.tools.register(
+      defineTool({
+        name: "serene_crystal",
+        description:
+          "这一轮要不要想起一条经验。传他刚说的那句话当 cue；触发词优先，没命中再按字面相似度挑，太低就空着。经验只能从后果里长，别自己总结一条补上。不传 cue 只返回「她平时想事情的路子」。",
+        parameters: {
+          cue: { type: "string", description: "对方刚说的那句话。用原话，不要概括。" },
+        },
+        output: stringOutput,
+        async execute(args) {
+          const block = crystalBlock(crystals.data, { cue: String(args?.cue ?? "") });
+          if (!block) return "这一轮没有对得上的经验。别硬套，也别自己总结一条——这条只能从后果里长。";
+          return block;
+        },
+      }),
+    );
+  }
 
   ctx.tools.register(
     defineTool({
@@ -486,6 +511,13 @@ export function registerTools(
                   },
             beliefs: { seeds: persona.beliefs, learned: beliefs?.beliefs ?? [] },
             profile: profile?.observations ?? [],
+            crystal: crystals
+              ? {
+                  ...crystals.stats(),
+                  lessons: crystals.data.lessons.map((item) => ({ ...item, issues: lessonIssues(item) })),
+                  dispositions: crystals.data.dispositions.map((item) => ({ ...item, issues: dispositionIssues(item) })),
+                }
+              : null,
             introspection: introspect?.last ?? null,
             opening: opening?.snapshot?.() ?? null,
             residue: snapshot.residue,
@@ -559,6 +591,7 @@ export function registerTools(
     profile,
     weather,
     introspect,
+    crystals,
     dataDir: dataDir || config.dataDir,
   });
 }
@@ -581,6 +614,7 @@ export function registerStatusTool(
     profile = null,
     weather = null,
     introspect = null,
+    crystals = null,
     dataDir = "",
     error = null,
   } = {},
@@ -650,6 +684,13 @@ export function registerStatusTool(
           lines.push(`- 看法：人格种子 ${persona?.beliefs?.length ?? 0} 条，学到的 ${beliefs?.beliefs?.length ?? 0} 条`);
         }
         if (profile) lines.push(`- 注意到他：${profile.observations.length} 条`);
+        if (crystals) {
+          const stats = crystals.stats();
+          lines.push(
+            `- 结晶：经验 ${stats.lessons} 条（可用 ${stats.lessonsReady}），想事情的路子 ${stats.dispositions} 条（可用 ${stats.dispositionsReady}）`,
+          );
+          if (stats.errors.length) lines.push(`- 结晶数据：${stats.errors.join("；")}`);
+        }
         if (introspect) {
           lines.push(`- 夜里：${introspect.last.lastKey ? `上次自省 ${introspect.last.lastKey}` : "还没自省过"}`);
         }

@@ -32,6 +32,10 @@ import { complete, ModelError } from "./lib/model.mjs";
 import { createDemoComplete, seedDemo } from "./lib/demo.mjs";
 import { checkPortBoundary } from "./lib/port-guard.mjs";
 import { HttpError, SereneWeb } from "./lib/runtime.mjs";
+import { Cards, attachActuals } from "./lib/watch/cards.mjs";
+import { WatchCollector } from "./lib/watch/collect.mjs";
+import { GATES } from "./lib/watch/extract.mjs";
+import { watchPaths } from "./lib/watch/util.mjs";
 
 const PUBLIC_DIR = join(packageRoot, "web", "public");
 const BODY_LIMIT = 256 * 1024;
@@ -76,6 +80,27 @@ try {
 if (demo && !existsSync(join(runtime.dataDir, "chat.jsonl")) && runtime.memory.size === 0) {
   seedDemo(runtime);
 }
+
+// 看护台：和她在同一个进程里，只读 traces.jsonl 长自己的瘦记录。
+// 起不来也不该拦住聊天——记一条到 stderr，页面照开。
+let watch = null;
+let watchCards = null;
+let watchError = null;
+
+function startWatch(target) {
+  try {
+    watch?.stop();
+    const paths = watchPaths(target.dataDir);
+    watchCards = new Cards({ dir: paths.root });
+    watch = new WatchCollector({ dataDir: target.dataDir }).start();
+    watchError = null;
+  } catch (error) {
+    watchError = String(error?.message ?? error);
+    console.warn(`[web] 看护台没起来：${watchError}`);
+  }
+}
+
+startWatch(runtime);
 
 const server = createServer(async (req, res) => {
   const startedAt = Date.now();
@@ -145,9 +170,52 @@ async function handleApi(req, res, url) {
   if (req.method === "GET" && path === "/api/health") {
     return sendJson(res, 200, { ok: true, version: VERSION, demo, persona: runtime.persona.id });
   }
+
+  /* ---------- 看护台（只读她自己的落盘） ---------- */
+
+  if (req.method === "GET" && path === "/api/watch/summary") {
+    return sendJson(res, 200, { ok: true, ...watchSummary(Number(url.searchParams.get("days")) || 14) });
+  }
+  if (req.method === "GET" && path === "/api/watch/turns") {
+    const date = String(url.searchParams.get("date") || "");
+    const limit = Math.max(1, Math.min(200, Number(url.searchParams.get("limit")) || 80));
+    const all = date ? watch.turnsFor(date) : watch.turns;
+    return sendJson(res, 200, { ok: true, date: date || null, total: all.length, turns: all.slice(-limit).reverse() });
+  }
+  if (req.method === "GET" && path === "/api/watch/metrics") {
+    const days = Math.max(1, Math.min(120, Number(url.searchParams.get("days")) || 30));
+    return sendJson(res, 200, { ok: true, days: watch.range(days), all: watch.daily });
+  }
+  if (req.method === "GET" && path === "/api/watch/cards") {
+    return sendJson(res, 200, { ok: true, cards: attachActuals(watchCards.list(), watch.daily) });
+  }
+  if (req.method === "GET" && path === "/api/watch/gates") {
+    return sendJson(res, 200, { ok: true, gates: GATES, hits: watch.gates.slice(-200).reverse() });
+  }
   if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "不支持的方法。" });
 
   const body = await readJson(req);
+
+  if (path === "/api/watch/card") {
+    try {
+      return sendJson(res, 200, { ok: true, card: watchCards.create(body) });
+    } catch (error) {
+      return sendJson(res, 400, { ok: false, error: String(error?.message ?? error) });
+    }
+  }
+  if (path === "/api/watch/verdict") {
+    try {
+      const card = watchCards.verdict(body.id, { verdict: body.verdict, note: body.note });
+      return sendJson(res, 200, { ok: true, card });
+    } catch (error) {
+      return sendJson(res, 400, { ok: false, error: String(error?.message ?? error) });
+    }
+  }
+  if (path === "/api/watch/poll") {
+    const result = watch.poll();
+    watch.rollupTick();
+    return sendJson(res, 200, { ok: true, ...result });
+  }
 
   if (path === "/api/say") {
     requireKeyIfLive();
@@ -206,6 +274,7 @@ async function setup(body, res) {
   if (body.baseUrl) patch.baseUrl = String(body.baseUrl).trim().replace(/\/+$/, "").slice(0, 200);
   if (body.persona) patch.persona = String(body.persona).trim();
   if (typeof body.remember === "boolean") patch.remember = body.remember;
+  if (typeof body.crystals === "boolean") patch.crystals = body.crystals;
   if (Number.isFinite(Number(body.proactivePerDay))) patch.proactivePerDay = Number(body.proactivePerDay);
 
   config = writeConfig(patch, baseDir);
@@ -216,7 +285,8 @@ async function setup(body, res) {
   personaSource = persona;
   // 记忆开关和主动额度是在构造时读进运行时的，改了要重新装配；
   // 只换 key / 模型不用，闭包每次调用都会读最新的 settings。
-  const runtimeChanged = changedPersona || patch.remember !== undefined || patch.proactivePerDay !== undefined;
+  const runtimeChanged =
+    changedPersona || patch.remember !== undefined || patch.proactivePerDay !== undefined || patch.crystals !== undefined;
   if (runtimeChanged) rebuildRuntime();
   console.log(`[web] 设置已保存${patch.apiKey ? "（key 已更新）" : ""}`);
   return sendJson(res, 200, {
@@ -285,6 +355,36 @@ function rebuildRuntime() {
   const next = createRuntime();
   next.state(); // 先走一遍，把坏文件暴露在启动阶段
   runtime = next;
+  startWatch(next);
+}
+
+/** 看护台第一屏：今天 / 昨天 / 近 N 天 / 红线 / 变更卡 / 体检。 */
+function watchSummary(days = 14) {
+  if (!watch) {
+    return {
+      ok: true,
+      date: null,
+      today: null,
+      yesterday: null,
+      days: [],
+      gates: [],
+      cards: [],
+      health: { ok: false, running: false, error: watchError },
+      error: watchError,
+    };
+  }
+  const summary = watch.summary({ days });
+  return {
+    ...summary,
+    cards: attachActuals(watchCards.list(), watch.daily).slice(0, 12),
+    gateCatalog: GATES,
+    about: {
+      mode: "record",
+      persona: runtime.persona.name,
+      boundary: `${summary.health.timezone} · 日界 ${String(summary.health.dayBoundaryHour).padStart(2, "0")}:00`,
+      source: summary.health.traceFile,
+    },
+  };
 }
 
 function publicConfig() {
@@ -300,6 +400,7 @@ function publicConfig() {
     demo,
     version: VERSION,
     remember: config.remember,
+    crystals: config.crystals,
     proactivePerDay: config.proactivePerDay,
     port: server.__port ?? (Number(args.port) || DEFAULT_PORT),
   };
@@ -360,7 +461,9 @@ const MIME = {
 
 function serveStatic(req, res, pathname) {
   const clean = decodeURIComponent(pathname.split("?")[0]);
-  const relativePath = clean === "/" ? "index.html" : clean.replace(/^\/+/, "");
+  // /watch 和 /watch/ 是一页，不是目录索引：直接给那一个文件。
+  const relativePath =
+    clean === "/" ? "index.html" : clean === "/watch" || clean === "/watch/" ? "watch.html" : clean.replace(/^\/+/, "");
   const file = normalize(join(PUBLIC_DIR, relativePath));
   if (!file.startsWith(PUBLIC_DIR) || !existsSync(file) || !statSync(file).isFile()) {
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
@@ -450,6 +553,7 @@ function parseArgs(argv) {
 
 function listen(port) {
   server.__port = port;
+  server.on("close", () => watch?.stop());
   server.listen(port, "127.0.0.1", () => {
     const actual = server.address().port;
     server.__port = actual;
@@ -458,6 +562,7 @@ function listen(port) {
     console.log(`  ${runtime.persona.name} · 网页版 ${VERSION}${demo ? "（演示模式：不联网，台词固定）" : ""}`);
     console.log("");
     console.log(`  打开：${url}`);
+    console.log(`  看护：${url}/watch`);
     console.log(`  数据：${runtime.dataDir}`);
     console.log(`  模型：${demo ? "演示台词" : `${settings.model}（${keyState.key ? "key 已就绪" : "还没有 key"}）`}`);
     console.log("");

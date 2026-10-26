@@ -15,7 +15,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const VERSION = "0.6.0";
+export const VERSION = "0.7.0";
 export const DEFAULT_PORT = 4317;
 export const DEFAULT_MODEL = "deepseek-chat";
 export const DEFAULT_BASE_URL = "https://api.deepseek.com";
@@ -70,6 +70,7 @@ const DEFAULTS = Object.freeze({
   remember: true,
   proactivePerDay: 3,
   depth: "normal",
+  crystals: true,
 });
 
 export function readConfig(base = baseDataDir()) {
@@ -113,6 +114,7 @@ function normalizeConfig(raw) {
     remember: source.remember !== false,
     proactivePerDay: Number.isFinite(perDay) ? Math.max(0, Math.min(12, Math.floor(perDay))) : DEFAULTS.proactivePerDay,
     depth,
+    crystals: source.crystals !== false,
   };
 }
 

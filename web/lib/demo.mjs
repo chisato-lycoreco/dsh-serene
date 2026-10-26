@@ -154,6 +154,15 @@ export function seedDemo(runtime, now = Date.now()) {
     runtime.profile.observe({ dimension: "rhythm", value: "睡得晚，常在深夜说话", weight: 1.5, now });
     runtime.profile.observe({ dimension: "taste", value: "在学做饭，怕油烟", weight: 1, now });
     runtime.profile.observe({ dimension: "matters", value: "在意自己会不会给别人添麻烦", weight: 1, now });
+    // 手上那一件：一小时前开始的片子，还没放完——「在干嘛」有得答，又不是编的。
+    runtime.leisure.record({
+      kind: "movie",
+      title: "海上钢琴师",
+      minutes: 95,
+      startAt: now - 55 * 60_000,
+      endAt: now - 55 * 60_000 + 95 * 60_000,
+      unfinished: false,
+    });
   } catch {
     // 演示数据只是锦上添花，失败也照常能聊。
   }

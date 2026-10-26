@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>看护台 · 知遥</title>
+    <link rel="stylesheet" href="/watch.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="rail">
+        <div class="rail-mark" aria-hidden="true">看</div>
+        <nav class="tabs" aria-label="看护台分页">
+          <a href="#today" data-tab="today">今天</a>
+          <a href="#redline" data-tab="redline">红线</a>
+          <a href="#metrics" data-tab="metrics">指标</a>
+          <a href="#changes" data-tab="changes">变更</a>
+          <a href="#health" data-tab="health">体检</a>
+          <a href="#about" data-tab="about">自检</a>
+        </nav>
+        <div class="rail-spacer"></div>
+        <a class="rail-back" href="/">回去说话</a>
+      </aside>
+
+      <div class="main">
+        <header class="head">
+          <div>
+            <h1 id="page-title">今天</h1>
+            <div class="sub" id="page-sub">只读她自己的落盘</div>
+          </div>
+          <div class="status">
+            <span class="dot" id="status-dot"></span>
+            <span id="status-text">正在读…</span>
+          </div>
+        </header>
+
+        <main class="view" id="view" aria-live="polite">
+          <p class="lede">正在把她的落盘读进来…</p>
+        </main>
+
+        <footer class="foot">
+          <span id="foot-left">看护台 · 只读</span>
+          <span id="foot-right"></span>
+        </footer>
+      </div>
+    </div>
+
+    <script type="module" src="/watch.js"></script>
+  </body>
+</html>

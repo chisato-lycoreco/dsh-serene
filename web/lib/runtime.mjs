@@ -26,7 +26,9 @@ import { checkStyle } from "../../core/style.js";
 import { loadPersona } from "../../src/persona.js";
 import { OpeningStore } from "../../src/opening.js";
 import { BeliefStore } from "../../src/stores/belief-store.js";
+import { CrystalStore } from "../../src/stores/crystal-store.js";
 import { EmotionStore } from "../../src/stores/emotion-store.js";
+import { LeisureStore } from "../../src/stores/leisure-store.js";
 import { MemoryStore } from "../../src/stores/memory-store.js";
 import { MotivationStore } from "../../src/stores/motivation-store.js";
 import { ProfileStore } from "../../src/stores/profile-store.js";
@@ -115,7 +117,9 @@ export class SereneWeb {
 
     this.emotion = new EmotionStore({ dir: this.personaDir, baseline: this.persona.baseline });
     this.memory = new MemoryStore({ dir: this.personaDir, capacity: 500 });
+    this.leisure = new LeisureStore({ dir: this.personaDir });
     this.beliefs = new BeliefStore({ dir: this.personaDir });
+    this.crystals = config.crystals === false ? null : new CrystalStore({ dir: this.personaDir, seeds: this.persona.crystals });
     this.profile = new ProfileStore({ dir: this.personaDir });
     this.motivation = new MotivationStore({
       dir: this.personaDir,
@@ -188,6 +192,9 @@ export class SereneWeb {
       depth: this.config.depth,
       asleep: life.asleep,
       crisis,
+      userText: text,
+      leisure: this.leisure.all(),
+      crystals: this.crystals?.data ?? null,
     });
 
     const history = this.#historyForModel();
