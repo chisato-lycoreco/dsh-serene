@@ -17,7 +17,7 @@
 > **只想聊两句，不想装任何东西？**
 > 下载、解压、双击 `start-web-demo.cmd`，浏览器里就能和她说话。不联网、不要 key、不花钱。
 >
-> **想接进自己的 agent？** `dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"`，一条命令。
+> **想接进自己的 agent？** `dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.7.0"`，一条命令。
 
 <img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/01-chat.png" alt="网页版：左边是对话，右边是她的此刻、情绪和她记得的事" width="900">
 
@@ -400,7 +400,7 @@ macOS / Linux 把前面换成 `~/.dsh/plugins/dsh-serene/`。
 要求：DSH `>= 0.2.1-rc.2`，Node `>= 22.19`。**安装前先完全退出 DSH**（安装会改 profile 的 `package.json` 和 `cordis.patch.yml`）。
 
 ```bash
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.7.0"
 ```
 
 装完在那个 profile 里说一句「用 serene_status 看看」，返回人格名、数据目录、记忆条数，就说明她真的挂上了。
@@ -410,13 +410,13 @@ dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
 
 ```bash
 # 从 GitHub 装（跟着 tag）
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.7.0"
 
 # 从本地目录装（开发时）
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
-# 从 tgz 装（去 Release 页面下 dsh-serene-0.6.0.tgz）
-dsh plugin --profile web add ./dsh-serene-0.6.0.tgz
+# 从 tgz 装（去 Release 页面下 dsh-serene-0.7.0.tgz）
+dsh plugin --profile web add ./dsh-serene-0.7.0.tgz
 ```
 
 装完用这条确认插件进了配置树：
@@ -548,7 +548,7 @@ flowchart LR
 先完全退出 DSH，再装（安装会改 profile 的 `package.json` 和 `cordis.patch.yml`）：
 
 ```bash
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.7.0"
 ```
 
 接着在装着插件的那个 profile 里说一句「用 serene_status 看看」。它返回人格名、数据目录、记忆条数，就说明她挂上了。挂不上时它会自己降级，并把原因留在 `serene_status` 和一行 stderr 里。

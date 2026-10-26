@@ -17,7 +17,7 @@ Personality is data, mood is state, memory is a file, and experience only grows 
 > **Just want to talk for a while without installing anything?**
 > Download, extract, double-click `start-web-demo.cmd`, and you can talk to her in a browser. Offline, no key, no cost.
 >
-> **Want it inside your own agent?** `dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"`. One command.
+> **Want it inside your own agent?** `dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.7.0"`. One command.
 
 <img src="https://raw.githubusercontent.com/chisato-lycoreco/dsh-serene/main/docs/screenshots/01-chat.png" alt="The web app: conversation on the left, her current moment, mood and memories on the right" width="900">
 
@@ -401,7 +401,7 @@ Still stuck? Photograph the error in the black window and open an **Issue** on t
 Requires DSH `>= 0.2.1-rc.2` and Node `>= 22.19`. **Quit DSH completely before installing** (installation modifies the profile's `package.json` and `cordis.patch.yml`).
 
 ```bash
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.7.0"
 ```
 
 Once it is installed, say "look with serene_status" in that profile. If it returns the persona name, data dir and memory count, she is really mounted.
@@ -411,13 +411,13 @@ Once it is installed, say "look with serene_status" in that profile. If it retur
 
 ```bash
 # from GitHub (pins a tag)
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.7.0"
 
 # from a local directory (development)
 dsh plugin --profile web add "/absolute/path/to/dsh-serene"
 
-# from a tgz (grab dsh-serene-0.6.0.tgz from the Releases page)
-dsh plugin --profile web add ./dsh-serene-0.6.0.tgz
+# from a tgz (grab dsh-serene-0.7.0.tgz from the Releases page)
+dsh plugin --profile web add ./dsh-serene-0.7.0.tgz
 ```
 
 After installing, confirm the plugin made it into the config tree:
@@ -549,7 +549,7 @@ When she gets it wrong, it can only come from three places: **the persona is wro
 Quit DSH completely, then install (this edits the profile's `package.json` and `cordis.patch.yml`):
 
 ```bash
-dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.6.0"
+dsh plugin --profile web add "github:chisato-lycoreco/dsh-serene#v0.7.0"
 ```
 
 Then say "look with serene_status" in the profile that has the plugin. If it returns the persona name, data dir and memory count, she's mounted. If not, she degrades quietly and leaves the reason in `serene_status` and one line of stderr.
